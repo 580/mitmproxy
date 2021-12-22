@@ -1,15 +1,10 @@
 version: "3"
 networks:
-  ytt:
+  ytt:    
+    # external: true
+    # name: host
 
 services:
-  chromedriver:
-    # container_name: "chromedriver"
-    image: selenium/standalone-chrome
-    ports: 
-      - "4445:4444"
-    networks:
-      - ytt
 
   # BrowserUpMitmProxyClient
   # python ./release/cibuild.py build
@@ -31,8 +26,9 @@ services:
     volumes:
       - ./dockerfile/mitmproxy/.mitmproxy:/home/mitmproxy/.mitmproxy
       - ./:/data
-    depends_on:
-      - chromedriver
+    # depends_on:
+    #   - chromedriver
+    # network_mode: "bridge"
     networks:
       - ytt
     extra_hosts:
