@@ -244,6 +244,7 @@ class BuildEnviron:
 
     @property
     def version(self) -> str:
+        return '8.0.0'
         if self.tag:
             if self.tag.startswith("v"):
                 try:
@@ -473,17 +474,19 @@ def build():  # pragma: no cover
     be = BuildEnviron.from_env()
     be.dump_info()
 
-    be.check_version()
+    # be.check_version()
     os.makedirs(be.dist_dir, exist_ok=True)
+    
+    build_wheel(be)
 
-    if be.should_build_wheel:
-        build_wheel(be)
-    if be.should_build_docker:
-        build_docker_image(be)
-    if be.should_build_pyinstaller:
-        build_pyinstaller(be)
-    if be.should_build_wininstaller:
-        build_wininstaller(be)
+    # if be.should_build_wheel:
+    #     build_wheel(be)
+    # if be.should_build_docker:
+    #     build_docker_image(be)
+    # if be.should_build_pyinstaller:
+    #     build_pyinstaller(be)
+    # if be.should_build_wininstaller:
+    #     build_wininstaller(be)
 
 
 @cli.command("upload")

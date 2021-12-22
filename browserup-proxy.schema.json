@@ -513,17 +513,17 @@
       "VerifyResult": {
         "type": "object",
         "properties": {
-          "type": {
-            "type": "string",
-            "description": "Type"
+          "result": {
+            "type": "boolean",
+            "description": "Result True / False"
           },
           "name": {
             "type": "string",
             "description": "Name"
           },
-          "result": {
-            "type": "boolean",
-            "description": "Result True / False"
+          "type": {
+            "type": "string",
+            "description": "Type"
           }
         },
         "required": [
@@ -535,13 +535,13 @@
       "Error": {
         "type": "object",
         "properties": {
-          "name": {
-            "type": "string",
-            "description": "Name of the Error to add. Stored in har under _errors"
-          },
           "details": {
             "type": "string",
             "description": "Short details of the error"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the Error to add. Stored in har under _errors"
           }
         }
       },
@@ -562,195 +562,6 @@
           "name",
           "value"
         ]
-      },
-      "WebSocketMessage": {
-        "type": "object",
-        "required": [
-          "type",
-          "opcode",
-          "data",
-          "time"
-        ],
-        "properties": {
-          "type": {
-            "type": "string"
-          },
-          "opcode": {
-            "type": "number"
-          },
-          "data": {
-            "type": "string"
-          },
-          "time": {
-            "type": "number"
-          }
-        }
-      },
-      "Har": {
-        "type": "object",
-        "required": [
-          "log"
-        ],
-        "properties": {
-          "log": {
-            "type": "object",
-            "externalDocs": {
-              "description": "HAR (HTTP Archive) Log Format",
-              "url": "http://www.softwareishard.com/blog/har-12-spec/"
-            },
-            "required": [
-              "version",
-              "creator",
-              "entries",
-              "pages"
-            ],
-            "properties": {
-              "version": {
-                "type": "string"
-              },
-              "creator": {
-                "type": "object",
-                "required": [
-                  "name",
-                  "version"
-                ],
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "version": {
-                    "type": "string"
-                  },
-                  "comment": {
-                    "type": "string"
-                  }
-                }
-              },
-              "browser": {
-                "type": "object",
-                "required": [
-                  "name",
-                  "version"
-                ],
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "version": {
-                    "type": "string"
-                  },
-                  "comment": {
-                    "type": "string"
-                  }
-                }
-              },
-              "pages": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/Page"
-                },
-                "default": []
-              },
-              "entries": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/Entry"
-                }
-              },
-              "comment": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      "Header": {
-        "type": "object",
-        "required": [
-          "name",
-          "value"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "value": {
-            "type": "string"
-          },
-          "comment": {
-            "type": "string"
-          }
-        }
-      },
-      "Page": {
-        "type": "object",
-        "required": [
-          "startedDateTime",
-          "id",
-          "title",
-          "pageTimings",
-          "_verifications"
-        ],
-        "properties": {
-          "startedDateTime": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "id": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "_verifications": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VerifyResult"
-            },
-            "default": []
-          },
-          "_counters": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Counter"
-            },
-            "default": []
-          },
-          "_errors": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Error"
-            },
-            "default": []
-          },
-          "pageTimings": {
-            "type": "object",
-            "required": [
-              "onLoad",
-              "onContentLoad"
-            ],
-            "properties": {
-              "onContentLoad": {
-                "type": "integer",
-                "format": "int64",
-                "minimum": -1,
-                "default": -1
-              },
-              "onLoad": {
-                "type": "integer",
-                "format": "int64",
-                "minimum": -1,
-                "default": -1
-              },
-              "comment": {
-                "type": "string"
-              }
-            }
-          },
-          "comment": {
-            "type": "string"
-          }
-        }
       },
       "CustomHarData": {
         "type": "object",
@@ -833,7 +644,14 @@
                       "type": "boolean"
                     },
                     "comment": {
-                      "type": "string"
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "integer"
+                        }
+                      ]
                     }
                   }
                 }
@@ -860,7 +678,14 @@
                       "type": "string"
                     },
                     "comment": {
-                      "type": "string"
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "integer"
+                        }
+                      ]
                     }
                   }
                 }
@@ -895,7 +720,14 @@
                           "type": "string"
                         },
                         "comment": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "integer"
+                            }
+                          ]
                         }
                       }
                     }
@@ -909,7 +741,14 @@
                 "type": "integer"
               },
               "comment": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
               }
             }
           },
@@ -967,7 +806,14 @@
                       "type": "boolean"
                     },
                     "comment": {
-                      "type": "string"
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "integer"
+                        }
+                      ]
                     }
                   }
                 }
@@ -1001,7 +847,14 @@
                     "type": "string"
                   },
                   "comment": {
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      }
+                    ]
                   }
                 }
               },
@@ -1015,7 +868,14 @@
                 "type": "integer"
               },
               "comment": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
               }
             }
           },
@@ -1047,7 +907,14 @@
                         "type": "integer"
                       },
                       "comment": {
-                        "type": "string"
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "integer"
+                          }
+                        ]
                       }
                     }
                   }
@@ -1079,14 +946,28 @@
                         "type": "integer"
                       },
                       "comment": {
-                        "type": "string"
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "integer"
+                          }
+                        ]
                       }
                     }
                   }
                 ]
               },
               "comment": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
               }
             }
           },
@@ -1145,7 +1026,14 @@
                 "default": -1
               },
               "comment": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
               }
             }
           },
@@ -1162,7 +1050,245 @@
             "type": "string"
           },
           "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          }
+        }
+      },
+      "Har": {
+        "type": "object",
+        "required": [
+          "log"
+        ],
+        "properties": {
+          "log": {
+            "type": "object",
+            "externalDocs": {
+              "description": "HAR (HTTP Archive) Log Format",
+              "url": "http://www.softwareishard.com/blog/har-12-spec/"
+            },
+            "required": [
+              "version",
+              "creator",
+              "entries",
+              "pages"
+            ],
+            "properties": {
+              "version": {
+                "type": "string"
+              },
+              "creator": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "version"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  },
+                  "comment": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      }
+                    ]
+                  }
+                }
+              },
+              "browser": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "version"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  },
+                  "comment": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      }
+                    ]
+                  }
+                }
+              },
+              "pages": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Page"
+                },
+                "default": []
+              },
+              "entries": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Entry"
+                }
+              },
+              "comment": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "Header": {
+        "type": "object",
+        "required": [
+          "name",
+          "value"
+        ],
+        "properties": {
+          "name": {
             "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          }
+        }
+      },
+      "Page": {
+        "type": "object",
+        "required": [
+          "startedDateTime",
+          "id",
+          "title",
+          "pageTimings",
+          "_verifications"
+        ],
+        "properties": {
+          "startedDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "_verifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VerifyResult"
+            },
+            "default": []
+          },
+          "_counters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Counter"
+            },
+            "default": []
+          },
+          "_errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "default": []
+          },
+          "pageTimings": {
+            "type": "object",
+            "required": [
+              "onLoad",
+              "onContentLoad"
+            ],
+            "properties": {
+              "onContentLoad": {
+                "type": "integer",
+                "format": "int64",
+                "minimum": -1,
+                "default": -1
+              },
+              "onLoad": {
+                "type": "integer",
+                "format": "int64",
+                "minimum": -1,
+                "default": -1
+              },
+              "comment": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
+              }
+            }
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          }
+        }
+      },
+      "WebSocketMessage": {
+        "type": "object",
+        "required": [
+          "type",
+          "opcode",
+          "data",
+          "time"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "opcode": {
+            "type": "number"
+          },
+          "data": {
+            "type": "string"
+          },
+          "time": {
+            "type": "number"
           }
         }
       }

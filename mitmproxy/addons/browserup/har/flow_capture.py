@@ -130,8 +130,11 @@ class FlowCaptureMixin(object):
         har_entry['timings'] = t
 
         if flow.server_conn.connected:
-            har_entry["serverIPAddress"] = str(
-                flow.server_conn.ip_address[0])
+            if flow.server_conn.ip_address is not None:
+                har_entry["serverIPAddress"] = str(
+                    flow.server_conn.ip_address[0])
+            else:
+                har_entry["serverIPAddress"] = "0.0.0.0"
 
         flow.set_har_entry(har_entry)
         ctx.log.debug('Populated har entry for response: {}, entry: {}'.format(flow.request.url, str(har_entry)))
