@@ -1,8 +1,10 @@
 """
 Use mitmproxy's filter pattern in scripts.
 """
-from mitmproxy import flowfilter
+import logging
+
 from mitmproxy import ctx, http
+from mitmproxy import flowfilter
 
 
 class Filter:
@@ -10,17 +12,16 @@ class Filter:
         self.filter: flowfilter.TFilter = None
 
     def configure(self, updated):
-        self.filter = flowfilter.parse(ctx.options.flowfilter)
+        if "flowfilter" in updated:
+            self.filter = flowfilter.parse(ctx.options.flowfilter)
 
     def load(self, l):
-        l.add_option(
-            "flowfilter", str, "", "Check that flow matches filter."
-        )
+        l.add_option("flowfilter", str, "", "Check that flow matches filter.")
 
     def response(self, flow: http.HTTPFlow) -> None:
         if flowfilter.match(self.filter, flow):
-            ctx.log.info("Flow matches filter:")
-            ctx.log.info(flow)
+            logging.info("Flow matches filter:")
+            logging.info(flow)
 
 
 addons = [Filter()]

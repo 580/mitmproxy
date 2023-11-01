@@ -1,11 +1,13 @@
 import asyncio
+import logging
 import os
 import importlib.util
 import importlib.machinery
 import sys
 import types
-import typing
 import traceback
+from collections.abc import Sequence
+from typing import Optional
 
 from mitmproxy import addonmanager, hooks
 from mitmproxy import exceptions
@@ -14,9 +16,12 @@ from mitmproxy import command
 from mitmproxy import eventsequence
 from mitmproxy import ctx
 import mitmproxy.types as mtypes
+from mitmproxy.utils import asyncio_utils
+
+logger = logging.getLogger(__name__)
 
 
-def load_script(path: str) -> typing.Optional[types.ModuleType]:
+def load_script(path: str) -> Optional[types.ModuleType]:
     fullname = "__mitmproxy_script__.{}".format(
         os.path.splitext(os.path.basename(path))[0]
     )
@@ -43,8 +48,8 @@ def load_script(path: str) -> typing.Optional[types.ModuleType]:
 
 def script_error_handler(path, exc, msg="", tb=False):
     """
-        Handles all the user's script errors with
-        an optional traceback
+    Handles all the user's script errors with
+    an optional traceback
     """
     exception = type(exc).__name__
     if msg:
@@ -55,9 +60,11 @@ def script_error_handler(path, exc, msg="", tb=False):
     log_msg = f"in script {path}:{lineno} {exception}"
     if tb:
         etype, value, tback = sys.exc_info()
-        tback = addonmanager.cut_traceback(tback, "invoke_addon")
-        log_msg = log_msg + "\n" + "".join(traceback.format_exception(etype, value, tback))
-    ctx.log.error(log_msg)
+        tback = addonmanager.cut_traceback(tback, "invoke_addon_sync")
+        log_msg = (
+            log_msg + "\n" + "".join(traceback.format_exception(etype, value, tback))
+        )
+    logger.error(log_msg)
 
 
 ReloadInterval = 1
@@ -65,25 +72,30 @@ ReloadInterval = 1
 
 class Script:
     """
-        An addon that manages a single script.
+    An addon that manages a single script.
     """
 
     def __init__(self, path: str, reload: bool) -> None:
         self.name = "scriptmanager:" + path
         self.path = path
-        self.fullpath = os.path.expanduser(
-            path.strip("'\" ")
-        )
+        self.fullpath = os.path.expanduser(path.strip("'\" "))
         self.ns = None
+        self.is_running = False
 
         if not os.path.isfile(self.fullpath):
-            raise exceptions.OptionsError('No such script')
+            raise exceptions.OptionsError("No such script")
 
         self.reloadtask = None
         if reload:
-            self.reloadtask = asyncio.ensure_future(self.watcher())
+            self.reloadtask = asyncio_utils.create_task(
+                self.watcher(),
+                name=f"script watcher for {path}",
+            )
         else:
             self.loadscript()
+
+    def running(self):
+        self.is_running = True
 
     def done(self):
         if self.reloadtask:
@@ -94,7 +106,7 @@ class Script:
         return [self.ns] if self.ns else []
 
     def loadscript(self):
-        ctx.log.info("Loading script %s" % self.path)
+        logger.info("Loading script %s" % self.path)
         if self.ns:
             ctx.master.addons.remove(self.ns)
         self.ns = None
@@ -103,16 +115,15 @@ class Script:
             ctx.master.addons.register(ns)
             self.ns = ns
         if self.ns:
-            # We're already running, so we have to explicitly register and
-            # configure the addon
-            ctx.master.addons.invoke_addon(self.ns, hooks.RunningHook())
             try:
-                ctx.master.addons.invoke_addon(
-                    self.ns,
-                    hooks.ConfigureHook(ctx.options.keys())
+                ctx.master.addons.invoke_addon_sync(
+                    self.ns, hooks.ConfigureHook(ctx.options.keys())
                 )
             except exceptions.OptionsError as e:
                 script_error_handler(self.fullpath, e, msg=str(e))
+            if self.is_running:
+                # We're already running, so we call that on the addon now.
+                ctx.master.addons.invoke_addon_sync(self.ns, hooks.RunningHook())
 
     async def watcher(self):
         last_mtime = 0
@@ -120,7 +131,7 @@ class Script:
             try:
                 mtime = os.stat(self.fullpath).st_mtime
             except FileNotFoundError:
-                ctx.log.info("Removing script %s" % self.path)
+                logger.info("Removing script %s" % self.path)
                 scripts = list(ctx.options.scripts)
                 scripts.remove(self.path)
                 ctx.options.update(scripts=scripts)
@@ -133,42 +144,40 @@ class Script:
 
 class ScriptLoader:
     """
-        An addon that manages loading scripts from options.
+    An addon that manages loading scripts from options.
     """
+
     def __init__(self):
         self.is_running = False
         self.addons = []
 
     def load(self, loader):
-        loader.add_option(
-            "scripts", typing.Sequence[str], [],
-            "Execute a script."
-        )
+        loader.add_option("scripts", Sequence[str], [], "Execute a script.")
 
     def running(self):
         self.is_running = True
 
     @command.command("script.run")
-    def script_run(self, flows: typing.Sequence[flow.Flow], path: mtypes.Path) -> None:
+    def script_run(self, flows: Sequence[flow.Flow], path: mtypes.Path) -> None:
         """
-            Run a script on the specified flows. The script is configured with
-            the current options and all lifecycle events for each flow are
-            simulated. Note that the load event is not invoked.
+        Run a script on the specified flows. The script is configured with
+        the current options and all lifecycle events for each flow are
+        simulated. Note that the load event is not invoked.
         """
         if not os.path.isfile(path):
-            ctx.log.error('No such script: %s' % path)
+            logger.error("No such script: %s" % path)
             return
         mod = load_script(path)
         if mod:
             with addonmanager.safecall():
-                ctx.master.addons.invoke_addon(mod, hooks.RunningHook())
-                ctx.master.addons.invoke_addon(
+                ctx.master.addons.invoke_addon_sync(
                     mod,
                     hooks.ConfigureHook(ctx.options.keys()),
                 )
+                ctx.master.addons.invoke_addon_sync(mod, hooks.RunningHook())
                 for f in flows:
                     for evt in eventsequence.iterate(f):
-                        ctx.master.addons.invoke_addon(mod, evt)
+                        ctx.master.addons.invoke_addon_sync(mod, evt)
 
     def configure(self, updated):
         if "scripts" in updated:
@@ -178,7 +187,7 @@ class ScriptLoader:
 
             for a in self.addons[:]:
                 if a.path not in ctx.options.scripts:
-                    ctx.log.info("Un-loading script: %s" % a.path)
+                    logger.info("Un-loading script: %s" % a.path)
                     ctx.master.addons.remove(a)
                     self.addons.remove(a)
 
@@ -209,4 +218,4 @@ class ScriptLoader:
                 if self.is_running:
                     # If we're already running, we configure and tell the addon
                     # we're up and running.
-                    ctx.master.addons.invoke_addon(s, hooks.RunningHook())
+                    ctx.master.addons.invoke_addon_sync(s, hooks.RunningHook())

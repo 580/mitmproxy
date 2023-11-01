@@ -1,6 +1,8 @@
+import logging
 import re
-import typing
+from collections.abc import Sequence
 from pathlib import Path
+from typing import NamedTuple
 
 from mitmproxy import ctx, exceptions, flowfilter, http
 from mitmproxy.http import Headers
@@ -8,7 +10,7 @@ from mitmproxy.utils import strutils
 from mitmproxy.utils.spec import parse_spec
 
 
-class ModifySpec(typing.NamedTuple):
+class ModifySpec(NamedTuple):
     matches: flowfilter.TFilter
     subject: bytes
     replacement_str: str
@@ -50,16 +52,18 @@ def parse_modify_spec(option: str, subject_is_regex: bool) -> ModifySpec:
 
 class ModifyHeaders:
     def __init__(self):
-        self.replacements: typing.List[ModifySpec] = []
+        self.replacements: list[ModifySpec] = []
 
     def load(self, loader):
         loader.add_option(
-            "modify_headers", typing.Sequence[str], [],
+            "modify_headers",
+            Sequence[str],
+            [],
             """
             Header modify pattern of the form "[/flow-filter]/header-name/[@]header-value", where the
             separator can be any character. The @ allows to provide a file path that is used to read
             the header value string. An empty header-value removes existing header-name headers.
-            """
+            """,
         )
 
     def configure(self, updated):
@@ -69,16 +73,18 @@ class ModifyHeaders:
                 try:
                     spec = parse_modify_spec(option, False)
                 except ValueError as e:
-                    raise exceptions.OptionsError(f"Cannot parse modify_headers option {option}: {e}") from e
+                    raise exceptions.OptionsError(
+                        f"Cannot parse modify_headers option {option}: {e}"
+                    ) from e
                 self.replacements.append(spec)
 
     def request(self, flow):
-        if flow.response or flow.error or flow.reply.state == "taken":
+        if flow.response or flow.error or not flow.live:
             return
         self.run(flow, flow.request.headers)
 
     def response(self, flow):
-        if flow.error or flow.reply.state == "taken":
+        if flow.error or not flow.live:
             return
         self.run(flow, flow.response.headers)
 
@@ -101,7 +107,7 @@ class ModifyHeaders:
                 try:
                     replacement = spec.read_replacement()
                 except OSError as e:
-                    ctx.log.warn(f"Could not read replacement file: {e}")
+                    logging.warning(f"Could not read replacement file: {e}")
                     continue
                 else:
                     if replacement:

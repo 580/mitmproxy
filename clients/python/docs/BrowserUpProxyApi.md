@@ -1,6 +1,6 @@
 # BrowserUpMitmProxyClient.BrowserUpProxyApi
 
-All URIs are relative to *http://localhost:8088*
+All URIs are relative to *http://localhost:48088*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
@@ -27,39 +27,38 @@ Add Custom Counter to the captured traffic har
 
 ```python
 import time
+import os
 import BrowserUpMitmProxyClient
-from BrowserUpMitmProxyClient.api import browser_up_proxy_api
-from BrowserUpMitmProxyClient.model.counter import Counter
+from BrowserUpMitmProxyClient.models.counter import Counter
+from BrowserUpMitmProxyClient.rest import ApiException
 from pprint import pprint
-# Defining the host is optional and defaults to http://localhost:8088
+
+# Defining the host is optional and defaults to http://localhost:48088
 # See configuration.py for a list of all supported configuration parameters.
 configuration = BrowserUpMitmProxyClient.Configuration(
-    host = "http://localhost:8088"
+    host = "http://localhost:48088"
 )
 
 
 # Enter a context with an instance of the API client
-with BrowserUpMitmProxyClient.ApiClient() as api_client:
+with BrowserUpMitmProxyClient.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = browser_up_proxy_api.BrowserUpProxyApi(api_client)
-    counter = Counter(
-        value=3.14,
-        name="name_example",
-    ) # Counter | Receives a new counter to add. The counter is stored, under the hood, in an array in the har under the _counters key
+    api_instance = BrowserUpMitmProxyClient.BrowserUpProxyApi(api_client)
+    counter = BrowserUpMitmProxyClient.Counter() # Counter | Receives a new counter to add. The counter is stored, under the hood, in an array in the har under the _counters key
 
-    # example passing only required values which don't have defaults set
     try:
         api_instance.add_counter(counter)
-    except BrowserUpMitmProxyClient.ApiException as e:
+    except Exception as e:
         print("Exception when calling BrowserUpProxyApi->add_counter: %s\n" % e)
 ```
+
 
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **counter** | [**Counter**](Counter.md)| Receives a new counter to add. The counter is stored, under the hood, in an array in the har under the _counters key |
+ **counter** | [**Counter**](Counter.md)| Receives a new counter to add. The counter is stored, under the hood, in an array in the har under the _counters key | 
 
 ### Return type
 
@@ -73,7 +72,6 @@ No authorization required
 
  - **Content-Type**: application/json
  - **Accept**: Not defined
-
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -94,39 +92,38 @@ Add Custom Error to the captured traffic har
 
 ```python
 import time
+import os
 import BrowserUpMitmProxyClient
-from BrowserUpMitmProxyClient.api import browser_up_proxy_api
-from BrowserUpMitmProxyClient.model.error import Error
+from BrowserUpMitmProxyClient.models.error import Error
+from BrowserUpMitmProxyClient.rest import ApiException
 from pprint import pprint
-# Defining the host is optional and defaults to http://localhost:8088
+
+# Defining the host is optional and defaults to http://localhost:48088
 # See configuration.py for a list of all supported configuration parameters.
 configuration = BrowserUpMitmProxyClient.Configuration(
-    host = "http://localhost:8088"
+    host = "http://localhost:48088"
 )
 
 
 # Enter a context with an instance of the API client
-with BrowserUpMitmProxyClient.ApiClient() as api_client:
+with BrowserUpMitmProxyClient.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = browser_up_proxy_api.BrowserUpProxyApi(api_client)
-    error = Error(
-        name="name_example",
-        details="details_example",
-    ) # Error | Receives an error to track. Internally, the error is stored in an array in the har under the _errors key
+    api_instance = BrowserUpMitmProxyClient.BrowserUpProxyApi(api_client)
+    error = BrowserUpMitmProxyClient.Error() # Error | Receives an error to track. Internally, the error is stored in an array in the har under the _errors key
 
-    # example passing only required values which don't have defaults set
     try:
         api_instance.add_error(error)
-    except BrowserUpMitmProxyClient.ApiException as e:
+    except Exception as e:
         print("Exception when calling BrowserUpProxyApi->add_error: %s\n" % e)
 ```
+
 
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **error** | [**Error**](Error.md)| Receives an error to track. Internally, the error is stored in an array in the har under the _errors key |
+ **error** | [**Error**](Error.md)| Receives an error to track. Internally, the error is stored in an array in the har under the _errors key | 
 
 ### Return type
 
@@ -140,7 +137,6 @@ No authorization required
 
  - **Content-Type**: application/json
  - **Accept**: Not defined
-
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -161,29 +157,32 @@ Get the current HAR.
 
 ```python
 import time
+import os
 import BrowserUpMitmProxyClient
-from BrowserUpMitmProxyClient.api import browser_up_proxy_api
-from BrowserUpMitmProxyClient.model.har import Har
+from BrowserUpMitmProxyClient.models.har import Har
+from BrowserUpMitmProxyClient.rest import ApiException
 from pprint import pprint
-# Defining the host is optional and defaults to http://localhost:8088
+
+# Defining the host is optional and defaults to http://localhost:48088
 # See configuration.py for a list of all supported configuration parameters.
 configuration = BrowserUpMitmProxyClient.Configuration(
-    host = "http://localhost:8088"
+    host = "http://localhost:48088"
 )
 
 
 # Enter a context with an instance of the API client
-with BrowserUpMitmProxyClient.ApiClient() as api_client:
+with BrowserUpMitmProxyClient.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = browser_up_proxy_api.BrowserUpProxyApi(api_client)
+    api_instance = BrowserUpMitmProxyClient.BrowserUpProxyApi(api_client)
 
-    # example, this endpoint has no required or optional parameters
     try:
         api_response = api_instance.get_har_log()
+        print("The response of BrowserUpProxyApi->get_har_log:\n")
         pprint(api_response)
-    except BrowserUpMitmProxyClient.ApiException as e:
+    except Exception as e:
         print("Exception when calling BrowserUpProxyApi->get_har_log: %s\n" % e)
 ```
+
 
 
 ### Parameters
@@ -201,7 +200,6 @@ No authorization required
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
-
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -221,27 +219,29 @@ Get the healthcheck
 
 ```python
 import time
+import os
 import BrowserUpMitmProxyClient
-from BrowserUpMitmProxyClient.api import browser_up_proxy_api
+from BrowserUpMitmProxyClient.rest import ApiException
 from pprint import pprint
-# Defining the host is optional and defaults to http://localhost:8088
+
+# Defining the host is optional and defaults to http://localhost:48088
 # See configuration.py for a list of all supported configuration parameters.
 configuration = BrowserUpMitmProxyClient.Configuration(
-    host = "http://localhost:8088"
+    host = "http://localhost:48088"
 )
 
 
 # Enter a context with an instance of the API client
-with BrowserUpMitmProxyClient.ApiClient() as api_client:
+with BrowserUpMitmProxyClient.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = browser_up_proxy_api.BrowserUpProxyApi(api_client)
+    api_instance = BrowserUpMitmProxyClient.BrowserUpProxyApi(api_client)
 
-    # example, this endpoint has no required or optional parameters
     try:
         api_instance.healthcheck()
-    except BrowserUpMitmProxyClient.ApiException as e:
+    except Exception as e:
         print("Exception when calling BrowserUpProxyApi->healthcheck: %s\n" % e)
 ```
+
 
 
 ### Parameters
@@ -259,7 +259,6 @@ No authorization required
 
  - **Content-Type**: Not defined
  - **Accept**: Not defined
-
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -279,37 +278,40 @@ Starts a fresh HAR Page (Step) in the current active HAR to group requests.
 
 ```python
 import time
+import os
 import BrowserUpMitmProxyClient
-from BrowserUpMitmProxyClient.api import browser_up_proxy_api
-from BrowserUpMitmProxyClient.model.har import Har
+from BrowserUpMitmProxyClient.models.har import Har
+from BrowserUpMitmProxyClient.rest import ApiException
 from pprint import pprint
-# Defining the host is optional and defaults to http://localhost:8088
+
+# Defining the host is optional and defaults to http://localhost:48088
 # See configuration.py for a list of all supported configuration parameters.
 configuration = BrowserUpMitmProxyClient.Configuration(
-    host = "http://localhost:8088"
+    host = "http://localhost:48088"
 )
 
 
 # Enter a context with an instance of the API client
-with BrowserUpMitmProxyClient.ApiClient() as api_client:
+with BrowserUpMitmProxyClient.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = browser_up_proxy_api.BrowserUpProxyApi(api_client)
-    title = "qHXQgLTwLi" # str | The unique title for this har page/step.
+    api_instance = BrowserUpMitmProxyClient.BrowserUpProxyApi(api_client)
+    title = 'title_example' # str | The unique title for this har page/step.
 
-    # example passing only required values which don't have defaults set
     try:
         api_response = api_instance.new_page(title)
+        print("The response of BrowserUpProxyApi->new_page:\n")
         pprint(api_response)
-    except BrowserUpMitmProxyClient.ApiException as e:
+    except Exception as e:
         print("Exception when calling BrowserUpProxyApi->new_page: %s\n" % e)
 ```
+
 
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **title** | **str**| The unique title for this har page/step. |
+ **title** | **str**| The unique title for this har page/step. | 
 
 ### Return type
 
@@ -323,7 +325,6 @@ No authorization required
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
-
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -343,29 +344,32 @@ Starts a fresh HAR capture session.
 
 ```python
 import time
+import os
 import BrowserUpMitmProxyClient
-from BrowserUpMitmProxyClient.api import browser_up_proxy_api
-from BrowserUpMitmProxyClient.model.har import Har
+from BrowserUpMitmProxyClient.models.har import Har
+from BrowserUpMitmProxyClient.rest import ApiException
 from pprint import pprint
-# Defining the host is optional and defaults to http://localhost:8088
+
+# Defining the host is optional and defaults to http://localhost:48088
 # See configuration.py for a list of all supported configuration parameters.
 configuration = BrowserUpMitmProxyClient.Configuration(
-    host = "http://localhost:8088"
+    host = "http://localhost:48088"
 )
 
 
 # Enter a context with an instance of the API client
-with BrowserUpMitmProxyClient.ApiClient() as api_client:
+with BrowserUpMitmProxyClient.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = browser_up_proxy_api.BrowserUpProxyApi(api_client)
+    api_instance = BrowserUpMitmProxyClient.BrowserUpProxyApi(api_client)
 
-    # example, this endpoint has no required or optional parameters
     try:
         api_response = api_instance.reset_har_log()
+        print("The response of BrowserUpProxyApi->reset_har_log:\n")
         pprint(api_response)
-    except BrowserUpMitmProxyClient.ApiException as e:
+    except Exception as e:
         print("Exception when calling BrowserUpProxyApi->reset_har_log: %s\n" % e)
 ```
+
 
 
 ### Parameters
@@ -383,7 +387,6 @@ No authorization required
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
-
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -403,55 +406,43 @@ Verify no matching items are present in the captured traffic
 
 ```python
 import time
+import os
 import BrowserUpMitmProxyClient
-from BrowserUpMitmProxyClient.api import browser_up_proxy_api
-from BrowserUpMitmProxyClient.model.verify_result import VerifyResult
-from BrowserUpMitmProxyClient.model.match_criteria import MatchCriteria
+from BrowserUpMitmProxyClient.models.match_criteria import MatchCriteria
+from BrowserUpMitmProxyClient.models.verify_result import VerifyResult
+from BrowserUpMitmProxyClient.rest import ApiException
 from pprint import pprint
-# Defining the host is optional and defaults to http://localhost:8088
+
+# Defining the host is optional and defaults to http://localhost:48088
 # See configuration.py for a list of all supported configuration parameters.
 configuration = BrowserUpMitmProxyClient.Configuration(
-    host = "http://localhost:8088"
+    host = "http://localhost:48088"
 )
 
 
 # Enter a context with an instance of the API client
-with BrowserUpMitmProxyClient.ApiClient() as api_client:
+with BrowserUpMitmProxyClient.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = browser_up_proxy_api.BrowserUpProxyApi(api_client)
-    name = "qHXQgLTwLi" # str | The unique name for this verification operation
-    match_criteria = MatchCriteria(
-        url="url_example",
-        page="page_example",
-        status="status_example",
-        content="content_example",
-        content_type="content_type_example",
-        websocket_message="websocket_message_example",
-        request_header=,
-        request_cookie=,
-        response_header=,
-        response_cookie=,
-        json_valid=True,
-        json_path="json_path_example",
-        json_schema="json_schema_example",
-        error_if_no_traffic=True,
-    ) # MatchCriteria | Match criteria to select requests - response pairs for size tests
+    api_instance = BrowserUpMitmProxyClient.BrowserUpProxyApi(api_client)
+    name = 'name_example' # str | The unique name for this verification operation
+    match_criteria = BrowserUpMitmProxyClient.MatchCriteria() # MatchCriteria | Match criteria to select requests - response pairs for size tests
 
-    # example passing only required values which don't have defaults set
     try:
         api_response = api_instance.verify_not_present(name, match_criteria)
+        print("The response of BrowserUpProxyApi->verify_not_present:\n")
         pprint(api_response)
-    except BrowserUpMitmProxyClient.ApiException as e:
+    except Exception as e:
         print("Exception when calling BrowserUpProxyApi->verify_not_present: %s\n" % e)
 ```
+
 
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **name** | **str**| The unique name for this verification operation |
- **match_criteria** | [**MatchCriteria**](MatchCriteria.md)| Match criteria to select requests - response pairs for size tests |
+ **name** | **str**| The unique name for this verification operation | 
+ **match_criteria** | [**MatchCriteria**](MatchCriteria.md)| Match criteria to select requests - response pairs for size tests | 
 
 ### Return type
 
@@ -465,7 +456,6 @@ No authorization required
 
  - **Content-Type**: application/json
  - **Accept**: application/json
-
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -486,55 +476,43 @@ Verify at least one matching item is present in the captured traffic
 
 ```python
 import time
+import os
 import BrowserUpMitmProxyClient
-from BrowserUpMitmProxyClient.api import browser_up_proxy_api
-from BrowserUpMitmProxyClient.model.verify_result import VerifyResult
-from BrowserUpMitmProxyClient.model.match_criteria import MatchCriteria
+from BrowserUpMitmProxyClient.models.match_criteria import MatchCriteria
+from BrowserUpMitmProxyClient.models.verify_result import VerifyResult
+from BrowserUpMitmProxyClient.rest import ApiException
 from pprint import pprint
-# Defining the host is optional and defaults to http://localhost:8088
+
+# Defining the host is optional and defaults to http://localhost:48088
 # See configuration.py for a list of all supported configuration parameters.
 configuration = BrowserUpMitmProxyClient.Configuration(
-    host = "http://localhost:8088"
+    host = "http://localhost:48088"
 )
 
 
 # Enter a context with an instance of the API client
-with BrowserUpMitmProxyClient.ApiClient() as api_client:
+with BrowserUpMitmProxyClient.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = browser_up_proxy_api.BrowserUpProxyApi(api_client)
-    name = "qHXQgLTwLi" # str | The unique name for this verification operation
-    match_criteria = MatchCriteria(
-        url="url_example",
-        page="page_example",
-        status="status_example",
-        content="content_example",
-        content_type="content_type_example",
-        websocket_message="websocket_message_example",
-        request_header=,
-        request_cookie=,
-        response_header=,
-        response_cookie=,
-        json_valid=True,
-        json_path="json_path_example",
-        json_schema="json_schema_example",
-        error_if_no_traffic=True,
-    ) # MatchCriteria | Match criteria to select requests - response pairs for size tests
+    api_instance = BrowserUpMitmProxyClient.BrowserUpProxyApi(api_client)
+    name = 'name_example' # str | The unique name for this verification operation
+    match_criteria = BrowserUpMitmProxyClient.MatchCriteria() # MatchCriteria | Match criteria to select requests - response pairs for size tests
 
-    # example passing only required values which don't have defaults set
     try:
         api_response = api_instance.verify_present(name, match_criteria)
+        print("The response of BrowserUpProxyApi->verify_present:\n")
         pprint(api_response)
-    except BrowserUpMitmProxyClient.ApiException as e:
+    except Exception as e:
         print("Exception when calling BrowserUpProxyApi->verify_present: %s\n" % e)
 ```
+
 
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **name** | **str**| The unique name for this verification operation |
- **match_criteria** | [**MatchCriteria**](MatchCriteria.md)| Match criteria to select requests - response pairs for size tests |
+ **name** | **str**| The unique name for this verification operation | 
+ **match_criteria** | [**MatchCriteria**](MatchCriteria.md)| Match criteria to select requests - response pairs for size tests | 
 
 ### Return type
 
@@ -548,7 +526,6 @@ No authorization required
 
  - **Content-Type**: application/json
  - **Accept**: application/json
-
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -569,57 +546,45 @@ Verify matching items in the captured traffic meet the size criteria
 
 ```python
 import time
+import os
 import BrowserUpMitmProxyClient
-from BrowserUpMitmProxyClient.api import browser_up_proxy_api
-from BrowserUpMitmProxyClient.model.verify_result import VerifyResult
-from BrowserUpMitmProxyClient.model.match_criteria import MatchCriteria
+from BrowserUpMitmProxyClient.models.match_criteria import MatchCriteria
+from BrowserUpMitmProxyClient.models.verify_result import VerifyResult
+from BrowserUpMitmProxyClient.rest import ApiException
 from pprint import pprint
-# Defining the host is optional and defaults to http://localhost:8088
+
+# Defining the host is optional and defaults to http://localhost:48088
 # See configuration.py for a list of all supported configuration parameters.
 configuration = BrowserUpMitmProxyClient.Configuration(
-    host = "http://localhost:8088"
+    host = "http://localhost:48088"
 )
 
 
 # Enter a context with an instance of the API client
-with BrowserUpMitmProxyClient.ApiClient() as api_client:
+with BrowserUpMitmProxyClient.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = browser_up_proxy_api.BrowserUpProxyApi(api_client)
-    size = 0 # int | The size used for comparison, in kilobytes
-    name = "qHXQgLTwLi" # str | The unique name for this verification operation
-    match_criteria = MatchCriteria(
-        url="url_example",
-        page="page_example",
-        status="status_example",
-        content="content_example",
-        content_type="content_type_example",
-        websocket_message="websocket_message_example",
-        request_header=,
-        request_cookie=,
-        response_header=,
-        response_cookie=,
-        json_valid=True,
-        json_path="json_path_example",
-        json_schema="json_schema_example",
-        error_if_no_traffic=True,
-    ) # MatchCriteria | Match criteria to select requests - response pairs for size tests
+    api_instance = BrowserUpMitmProxyClient.BrowserUpProxyApi(api_client)
+    size = 56 # int | The size used for comparison, in kilobytes
+    name = 'name_example' # str | The unique name for this verification operation
+    match_criteria = BrowserUpMitmProxyClient.MatchCriteria() # MatchCriteria | Match criteria to select requests - response pairs for size tests
 
-    # example passing only required values which don't have defaults set
     try:
         api_response = api_instance.verify_size(size, name, match_criteria)
+        print("The response of BrowserUpProxyApi->verify_size:\n")
         pprint(api_response)
-    except BrowserUpMitmProxyClient.ApiException as e:
+    except Exception as e:
         print("Exception when calling BrowserUpProxyApi->verify_size: %s\n" % e)
 ```
+
 
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **size** | **int**| The size used for comparison, in kilobytes |
- **name** | **str**| The unique name for this verification operation |
- **match_criteria** | [**MatchCriteria**](MatchCriteria.md)| Match criteria to select requests - response pairs for size tests |
+ **size** | **int**| The size used for comparison, in kilobytes | 
+ **name** | **str**| The unique name for this verification operation | 
+ **match_criteria** | [**MatchCriteria**](MatchCriteria.md)| Match criteria to select requests - response pairs for size tests | 
 
 ### Return type
 
@@ -633,7 +598,6 @@ No authorization required
 
  - **Content-Type**: application/json
  - **Accept**: application/json
-
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -654,57 +618,45 @@ Verify each traffic item matching the criteria meets is below SLA time
 
 ```python
 import time
+import os
 import BrowserUpMitmProxyClient
-from BrowserUpMitmProxyClient.api import browser_up_proxy_api
-from BrowserUpMitmProxyClient.model.verify_result import VerifyResult
-from BrowserUpMitmProxyClient.model.match_criteria import MatchCriteria
+from BrowserUpMitmProxyClient.models.match_criteria import MatchCriteria
+from BrowserUpMitmProxyClient.models.verify_result import VerifyResult
+from BrowserUpMitmProxyClient.rest import ApiException
 from pprint import pprint
-# Defining the host is optional and defaults to http://localhost:8088
+
+# Defining the host is optional and defaults to http://localhost:48088
 # See configuration.py for a list of all supported configuration parameters.
 configuration = BrowserUpMitmProxyClient.Configuration(
-    host = "http://localhost:8088"
+    host = "http://localhost:48088"
 )
 
 
 # Enter a context with an instance of the API client
-with BrowserUpMitmProxyClient.ApiClient() as api_client:
+with BrowserUpMitmProxyClient.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = browser_up_proxy_api.BrowserUpProxyApi(api_client)
-    time = 0 # int | The time used for comparison
-    name = "qHXQgLTwLi" # str | The unique name for this verification operation
-    match_criteria = MatchCriteria(
-        url="url_example",
-        page="page_example",
-        status="status_example",
-        content="content_example",
-        content_type="content_type_example",
-        websocket_message="websocket_message_example",
-        request_header=,
-        request_cookie=,
-        response_header=,
-        response_cookie=,
-        json_valid=True,
-        json_path="json_path_example",
-        json_schema="json_schema_example",
-        error_if_no_traffic=True,
-    ) # MatchCriteria | Match criteria to select requests - response pairs for size tests
+    api_instance = BrowserUpMitmProxyClient.BrowserUpProxyApi(api_client)
+    time = 56 # int | The time used for comparison
+    name = 'name_example' # str | The unique name for this verification operation
+    match_criteria = BrowserUpMitmProxyClient.MatchCriteria() # MatchCriteria | Match criteria to select requests - response pairs for size tests
 
-    # example passing only required values which don't have defaults set
     try:
         api_response = api_instance.verify_sla(time, name, match_criteria)
+        print("The response of BrowserUpProxyApi->verify_sla:\n")
         pprint(api_response)
-    except BrowserUpMitmProxyClient.ApiException as e:
+    except Exception as e:
         print("Exception when calling BrowserUpProxyApi->verify_sla: %s\n" % e)
 ```
+
 
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **time** | **int**| The time used for comparison |
- **name** | **str**| The unique name for this verification operation |
- **match_criteria** | [**MatchCriteria**](MatchCriteria.md)| Match criteria to select requests - response pairs for size tests |
+ **time** | **int**| The time used for comparison | 
+ **name** | **str**| The unique name for this verification operation | 
+ **match_criteria** | [**MatchCriteria**](MatchCriteria.md)| Match criteria to select requests - response pairs for size tests | 
 
 ### Return type
 
@@ -718,7 +670,6 @@ No authorization required
 
  - **Content-Type**: application/json
  - **Accept**: application/json
-
 
 ### HTTP response details
 | Status code | Description | Response headers |

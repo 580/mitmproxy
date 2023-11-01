@@ -18,7 +18,7 @@ ___
 
 Building the API client library requires:
 1. Java 1.8+
-2. Maven/Gradle
+2. Maven (3.8.3+)/Gradle (7.2+)
 
 ## Installation
 
@@ -44,7 +44,7 @@ Add this dependency to your project's POM:
 <dependency>
   <groupId>com.browserup</groupId>
   <artifactId>browserup-mitmproxy-client</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.1.4-SNAPSHOT</version>
   <scope>compile</scope>
 </dependency>
 ```
@@ -54,7 +54,14 @@ Add this dependency to your project's POM:
 Add this dependency to your project's build file:
 
 ```groovy
-compile "com.browserup:browserup-mitmproxy-client:1.0.0-SNAPSHOT"
+  repositories {
+    mavenCentral()     // Needed if the 'browserup-mitmproxy-client' jar has been published to maven central.
+    mavenLocal()       // Needed if the 'browserup-mitmproxy-client' jar has been published to the local maven repo.
+  }
+
+  dependencies {
+     implementation "com.browserup:browserup-mitmproxy-client:1.1.4-SNAPSHOT"
+  }
 ```
 
 ### Others
@@ -67,7 +74,7 @@ mvn clean package
 
 Then manually install the following JARs:
 
-* `target/browserup-mitmproxy-client-1.0.0-SNAPSHOT.jar`
+* `target/browserup-mitmproxy-client-1.1.4-SNAPSHOT.jar`
 * `target/lib/*.jar`
 
 ## Getting Started
@@ -86,7 +93,7 @@ import com.browserup.proxy.api.BrowserUpProxyApi;
 public class Example {
   public static void main(String[] args) {
     ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost:8088");
+    defaultClient.setBasePath("http://localhost:48088");
 
     BrowserUpProxyApi apiInstance = new BrowserUpProxyApi(defaultClient);
     Counter counter = new Counter(); // Counter | Receives a new counter to add. The counter is stored, under the hood, in an array in the har under the _counters key
@@ -106,7 +113,7 @@ public class Example {
 
 ## Documentation for API Endpoints
 
-All URIs are relative to *http://localhost:8088*
+All URIs are relative to *http://localhost:48088*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
@@ -124,31 +131,39 @@ Class | Method | HTTP request | Description
 
 ## Documentation for Models
 
+ - [Action](docs/Action.md)
  - [Counter](docs/Counter.md)
- - [Entry](docs/Entry.md)
- - [EntryRequest](docs/EntryRequest.md)
- - [EntryRequestCookies](docs/EntryRequestCookies.md)
- - [EntryRequestQueryString](docs/EntryRequestQueryString.md)
- - [EntryResponse](docs/EntryResponse.md)
- - [EntryResponseContent](docs/EntryResponseContent.md)
- - [EntryTimings](docs/EntryTimings.md)
  - [Error](docs/Error.md)
  - [Har](docs/Har.md)
+ - [HarEntry](docs/HarEntry.md)
+ - [HarEntryCache](docs/HarEntryCache.md)
+ - [HarEntryCacheBeforeRequest](docs/HarEntryCacheBeforeRequest.md)
+ - [HarEntryRequest](docs/HarEntryRequest.md)
+ - [HarEntryRequestCookiesInner](docs/HarEntryRequestCookiesInner.md)
+ - [HarEntryRequestPostData](docs/HarEntryRequestPostData.md)
+ - [HarEntryRequestPostDataParamsInner](docs/HarEntryRequestPostDataParamsInner.md)
+ - [HarEntryRequestQueryStringInner](docs/HarEntryRequestQueryStringInner.md)
+ - [HarEntryResponse](docs/HarEntryResponse.md)
+ - [HarEntryResponseContent](docs/HarEntryResponseContent.md)
+ - [HarEntryTimings](docs/HarEntryTimings.md)
  - [HarLog](docs/HarLog.md)
  - [HarLogCreator](docs/HarLogCreator.md)
  - [Header](docs/Header.md)
+ - [LargestContentfulPaint](docs/LargestContentfulPaint.md)
  - [MatchCriteria](docs/MatchCriteria.md)
  - [NameValuePair](docs/NameValuePair.md)
  - [Page](docs/Page.md)
- - [PagePageTimings](docs/PagePageTimings.md)
+ - [PageTiming](docs/PageTiming.md)
+ - [PageTimings](docs/PageTimings.md)
  - [VerifyResult](docs/VerifyResult.md)
  - [WebSocketMessage](docs/WebSocketMessage.md)
 
 
+<a id="documentation-for-authorization"></a>
 ## Documentation for Authorization
 
-All endpoints do not require authorization.
-Authentication schemes defined for the API:
+Endpoints do not require authorization.
+
 
 ## Recommendation
 

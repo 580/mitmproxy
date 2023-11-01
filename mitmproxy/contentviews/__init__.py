@@ -12,22 +12,54 @@ metadata depend on the protocol in use. Known attributes can be found in
 `base.View`.
 """
 import traceback
-from typing import List, Union
+from typing import Union
 from typing import Optional
 
-from mitmproxy import flow
+from mitmproxy import flow, tcp, udp
 from mitmproxy import http
-from mitmproxy.utils import strutils
+from mitmproxy.utils import signals, strutils
 from . import (
-    auto, raw, hex, json, xml_html, wbxml, javascript, css,
-    urlencoded, multipart, image, query, protobuf, msgpack, graphql
+    auto,
+    raw,
+    hex,
+    json,
+    xml_html,
+    wbxml,
+    javascript,
+    css,
+    urlencoded,
+    multipart,
+    image,
+    query,
+    protobuf,
+    msgpack,
+    graphql,
+    grpc,
+    mqtt,
 )
+
+try:
+    from . import http3
+except ImportError:
+    # FIXME: Remove once QUIC is merged.
+    http3 = None  # type: ignore
 from .base import View, KEY_MAX, format_text, format_dict, TViewResult
 from ..http import HTTPFlow
 from ..tcp import TCPMessage, TCPFlow
+from ..udp import UDPMessage, UDPFlow
 from ..websocket import WebSocketMessage
 
-views: List[View] = []
+views: list[View] = []
+
+
+def _update(view: View) -> None:
+    ...
+
+
+on_add = signals.SyncSignal(_update)
+"""A new contentview has been added."""
+on_remove = signals.SyncSignal(_update)
+"""A contentview has been removed."""
 
 
 def get(name: str) -> Optional[View]:
@@ -44,10 +76,12 @@ def add(view: View) -> None:
             raise ValueError("Duplicate view: " + view.name)
 
     views.append(view)
+    on_add.send(view)
 
 
 def remove(view: View) -> None:
     views.remove(view)
+    on_remove.send(view)
 
 
 def safe_to_print(lines, encoding="utf8"):
@@ -66,8 +100,8 @@ def safe_to_print(lines, encoding="utf8"):
 
 def get_message_content_view(
     viewname: str,
-    message: Union[http.Message, TCPMessage, WebSocketMessage],
-    flow: Union[HTTPFlow, TCPFlow],
+    message: Union[http.Message, TCPMessage, UDPMessage, WebSocketMessage],
+    flow: Union[HTTPFlow, TCPFlow, UDPFlow],
 ):
     """
     Like get_content_view, but also handles message encoding.
@@ -86,9 +120,7 @@ def get_message_content_view(
         enc = "[cannot decode]"
     else:
         if isinstance(message, http.Message) and content != message.raw_content:
-            enc = "[decoded {}]".format(
-                message.headers.get("content-encoding")
-            )
+            enc = "[decoded {}]".format(message.headers.get("content-encoding"))
         else:
             enc = ""
 
@@ -103,32 +135,26 @@ def get_message_content_view(
             if ct := http.parse_content_type(ctype):
                 content_type = f"{ct[0]}/{ct[1]}"
 
+    tcp_message = None
+    if isinstance(message, TCPMessage):
+        tcp_message = message
+
+    udp_message = None
+    if isinstance(message, UDPMessage):
+        udp_message = message
+
     description, lines, error = get_content_view(
-        viewmode, content,
+        viewmode,
+        content,
         content_type=content_type,
         flow=flow,
         http_message=http_message,
+        tcp_message=tcp_message,
+        udp_message=udp_message,
     )
 
     if enc:
         description = f"{enc} {description}"
-
-    return description, lines, error
-
-
-def get_tcp_content_view(
-    viewname: str,
-    data: bytes,
-    flow: TCPFlow,
-):
-    viewmode = get(viewname)
-    if not viewmode:
-        viewmode = get("auto")
-
-    # https://github.com/mitmproxy/mitmproxy/pull/3970#issuecomment-623024447
-    assert viewmode
-
-    description, lines, error = get_content_view(viewmode, data, flow=flow)
 
     return description, lines, error
 
@@ -140,24 +166,41 @@ def get_content_view(
     content_type: Optional[str] = None,
     flow: Optional[flow.Flow] = None,
     http_message: Optional[http.Message] = None,
+    tcp_message: Optional[tcp.TCPMessage] = None,
+    udp_message: Optional[udp.UDPMessage] = None,
 ):
     """
-        Args:
-            viewmode: the view to use.
-            data, **metadata: arguments passed to View instance.
+    Args:
+        viewmode: the view to use.
+        data, **metadata: arguments passed to View instance.
 
-        Returns:
-            A (description, content generator, error) tuple.
-            If the content view raised an exception generating the view,
-            the exception is returned in error and the flow is formatted in raw mode.
-            In contrast to calling the views directly, text is always safe-to-print unicode.
+    Returns:
+        A (description, content generator, error) tuple.
+        If the content view raised an exception generating the view,
+        the exception is returned in error and the flow is formatted in raw mode.
+        In contrast to calling the views directly, text is always safe-to-print unicode.
     """
     try:
-        ret = viewmode(data, content_type=content_type, flow=flow, http_message=http_message)
+        ret = viewmode(
+            data,
+            content_type=content_type,
+            flow=flow,
+            http_message=http_message,
+            tcp_message=tcp_message,
+            udp_message=udp_message,
+        )
         if ret is None:
-            ret = "Couldn't parse: falling back to Raw", get("Raw")(
-                data, content_type=content_type, flow=flow, http_message=http_message
-            )[1]
+            ret = (
+                "Couldn't parse: falling back to Raw",
+                get("Raw")(
+                    data,
+                    content_type=content_type,
+                    flow=flow,
+                    http_message=http_message,
+                    tcp_message=tcp_message,
+                    udp_message=udp_message,
+                )[1],
+            )
         desc, content = ret
         error = None
     # Third-party viewers can fail in unexpected ways...
@@ -165,7 +208,14 @@ def get_content_view(
         desc = "Couldn't parse: falling back to Raw"
         raw = get("Raw")
         assert raw
-        content = raw(data, content_type=content_type, flow=flow, http_message=http_message)[1]
+        content = raw(
+            data,
+            content_type=content_type,
+            flow=flow,
+            http_message=http_message,
+            tcp_message=tcp_message,
+            udp_message=udp_message,
+        )[1]
         error = f"{getattr(viewmode, 'name')} content viewer failed: \n{traceback.format_exc()}"
 
     return desc, safe_to_print(content), error
@@ -187,8 +237,20 @@ add(image.ViewImage())
 add(query.ViewQuery())
 add(protobuf.ViewProtobuf())
 add(msgpack.ViewMsgPack())
+add(grpc.ViewGrpcProtobuf())
+add(mqtt.ViewMQTT())
+if http3 is not None:
+    add(http3.ViewHttp3())
 
 __all__ = [
-    "View", "KEY_MAX", "format_text", "format_dict", "TViewResult",
-    "get", "add", "remove", "get_content_view", "get_message_content_view",
+    "View",
+    "KEY_MAX",
+    "format_text",
+    "format_dict",
+    "TViewResult",
+    "get",
+    "add",
+    "remove",
+    "get_content_view",
+    "get_message_content_view",
 ]

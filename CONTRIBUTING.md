@@ -1,11 +1,15 @@
 # Contributing
 
+Please contribute upstream--we follow mitmproxy, but they 
+are the source of truth for the proxy in general.
+
+----------------------------------
 As an open source project, mitmproxy welcomes contributions of all forms. If you would like to bring the project
 forward, please consider contributing in the following areas:
 
 - **Maintenance:** We are *incredibly* thankful for individuals who are stepping up and helping with maintenance. This
   includes (but is not limited to) triaging issues, reviewing pull requests and picking up stale ones, helping out other
-  users on [StackOverflow](https://stackoverflow.com/questions/tagged/mitmproxy), creating minimal, complete and
+  users on [GitHub Discussions](https://github.com/mitmproxy/mitmproxy/discussions), creating minimal, complete and
   verifiable examples or test cases for existing bug reports, updating documentation, or fixing minor bugs that have
   recently been reported.
 - **Code Contributions:** We actively mark issues that we consider are [good first contributions](
@@ -14,7 +18,7 @@ forward, please consider contributing in the following areas:
 
 ## Development Setup
 
-To get started hacking on mitmproxy, please install a recent version of Python (we require at least Python 3.8).
+To get started hacking on mitmproxy, please install a recent version of Python (we require at least Python 3.9).
 Then, do the following:
 
 ##### Linux / macOS

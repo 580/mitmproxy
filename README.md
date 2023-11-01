@@ -1,16 +1,15 @@
-# The BrowserUp MITM Proxy
+# The BrowserUp Fork of the MITM Proxy
 
-The BrowserUp MITM Proxy allows you to capture HTTP requests, and responses and content, 
+The BrowserUp MITM Proxy allows you to capture HTTP requests, responses and content, 
 and export performance data as a HAR file. 
 
-The BrowserUp MITM Proxy is a fork of the amazing [mitmproxy](https://mitmproxy.org/), 
-with an added performance testing, QA and DevOps flavor. 
+The proxy is a fork of the amazing [mitmproxy](https://mitmproxy.org/), with an added performance testing, QA and DevOps flavor. 
 
-Along with the standard mitmproxy features, the BrowserUp MITM Proxy offers adds a REST control API and native language clients in 
+Along with the standard mitmproxy features, the BrowserUp MITM Proxy adds a REST control API and native language clients in 
 Java, JavaScript, Python and Ruby. It allows HAR capture (websockets and HTTP/2 too), and provides the ability to 
 verify (assert) about network traffic.
 
-BrowserUp MITM Proxy is especially useful when used with Selenium or Cypress tests.
+BrowserUp MITM Proxy is especially useful when used with Playwright, Cypress or Selenium tests.
 
 The REST API is documented [here](./doc.html) 
 
@@ -24,17 +23,23 @@ Follow the mitmproxy [certificate setup instructions](https://docs.mitmproxy.org
 
 Run one of our [examples in clients/examples](clients/examples)
 
-The standard mitmproxy executables are also shipped, and should work as normal.
+The executable for the BrowserUp Proxy, is *browserup-proxy*, so use that *instead* of mitmdump.
+
+The standard mitmproxy executables, like mitmweb are also shipped, and should work as normal.
 
 BrowserUp is a code contributor to the upstream project, and we hope to continue to support them with 
 code contributions where possible.
 
-Our fork for HAR, and clients are in the browserup addons.s
+The main changes for our fork are in the folders below/
 
-mitmproxy/tree/main/mitmproxy/addons/browserup/
-mitmproxy/tree/main/test/mitmproxy/addons/browserup
+mitmproxy/addons/browserup/
+
+test/mitmproxy/addons/browserup
+
+clients/
 
 The standard MITMProxy documentation follows below.
+
 
 ----------------
 
@@ -70,9 +75,9 @@ The documentation for mitmproxy is available on our website:
 [![mitmproxy documentation dev](https://shields.mitmproxy.org/badge/docs-dev-brightgreen.svg)](https://docs.mitmproxy.org/main/)
 
 If you have questions on how to use mitmproxy, please
-ask them on StackOverflow!
+use GitHub Discussions!
 
-[![StackOverflow: mitmproxy](https://shields.mitmproxy.org/stackexchange/stackoverflow/t/mitmproxy?color=orange&label=stackoverflow%20questions)](https://stackoverflow.com/questions/tagged/mitmproxy)
+[![mitmproxy discussions](https://shields.mitmproxy.org/badge/help-github%20discussions-orange.svg)](https://github.com/mitmproxy/mitmproxy/discussions)
 
 ## Contributing
 

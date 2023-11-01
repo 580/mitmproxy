@@ -1,35 +1,48 @@
 import _thread
 import asyncio
 import json
-
+import logging
 import falcon
 import os
 
+from typing import Optional
 from wsgiref.simple_server import make_server
-from pathlib import Path
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from falcon_apispec import FalconPlugin
-from mitmproxy.addons.browserup.har.har_schemas import MatchCriteriaSchema, VerifyResultSchema, ErrorSchema, CounterSchema
+from mitmproxy.addons.browserup.har.har_schemas import MatchCriteriaSchema, VerifyResultSchema, ErrorSchema, CounterSchema, PageTimingSchema
 from mitmproxy.addons.browserup.har_capture_addon import HarCaptureAddOn
+from mitmproxy.addons.browserup.browser_data_addon import BrowserDataAddOn
 from mitmproxy import ctx
+from pathlib import Path
+
+# https://marshmallow.readthedocs.io/en/stable/quickstart.html
+
+VERSION = '1.24'
 
 
 class BrowserUpAddonsManagerAddOn:
     initialized = False
 
     def load(self, l):
-        ctx.log.info('Loading BrowserUpAddonsManagerAddOn')
+        logging.info('Loading BrowserUpAddonsManagerAddOn')
+        logging.info('Version {}'.format(VERSION))
+
+        ctx.options.update(listen_port = 48080)
+
         l.add_option(
-            "addons_management_port", int, 8088, "REST api management port.",
+            name="addons_management_port",
+            typespec=Optional[int],
+            default=48088,
+            help= "REST api management port.",
         )
 
     def running(self):
-        ctx.log.info('Scanning for custom add-ons resources...')
+        logging.info('Scanning for custom add-ons resources...')
         global initialized
         if not self.initialized and self.is_script_loader_initialized():
-            ctx.log.info('Scanning for custom add-ons resources...')
-            ctx.log.info('Starting falcon REST service...')
+            logging.info('Scanning for custom add-ons resources...')
+            logging.info('Starting falcon REST service...')
             _thread.start_new_thread(self.start_falcon, ())
             initialized = True
 
@@ -45,10 +58,10 @@ class BrowserUpAddonsManagerAddOn:
     def basic_spec(self, app):
         return APISpec(
             title='BrowserUp MitmProxy',
-            version='1.0.0',
+            version=VERSION,
             servers = [{"url": "http://localhost:{port}/",
                         "description": "The development API server",
-                        "variables": {"port": {"enum": ["8088"], "default": '8088'}}
+                        "variables": {"port": {"enum": ["48088"], "default": '48088'}}
                         }],
             tags = [{"name": 'The BrowserUp MitmProxy API', "description": "BrowserUp MitmProxy REST API"}],
             info= {"description":
@@ -91,8 +104,14 @@ ___
         return resources
 
     def get_app(self):
-        app = falcon.API()
+        app = falcon.App()
+        # static_path = self.get_project_root() + "/scripts/browsertime"
+        # app.add_static_route('/browser/scripts', static_path)
+
+        app.req_options.auto_parse_form_urlencoded = True
+
         spec = self.basic_spec(app)
+        spec.components.schema('PageTiming', schema=PageTimingSchema)
         spec.components.schema('MatchCriteria', schema=MatchCriteriaSchema)
         spec.components.schema('VerifyResult', schema=VerifyResultSchema)
         spec.components.schema('Error', schema=ErrorSchema)
@@ -113,6 +132,9 @@ ___
         [get_children(node) for node in app._router._roots]
         return routes_list
 
+    def get_project_root(self):
+        return str(Path(__file__).parent.parent.parent.parent)
+
     def start_falcon(self):
         app = self.get_app()
         print("Routes: ")
@@ -123,10 +145,11 @@ ___
             asyncio.set_event_loop(loop)
             httpd.serve_forever()
 
-            # https://marshmallow.readthedocs.io/en/stable/quickstart.html
 
+har_capture_addon = HarCaptureAddOn()
 
 addons = [
-    HarCaptureAddOn(),
+    har_capture_addon,
+    BrowserDataAddOn(har_capture_addon),
     BrowserUpAddonsManagerAddOn()
 ]

@@ -1,5 +1,6 @@
 import base64
 import typing
+import logging
 
 from mitmproxy import connection
 from mitmproxy.utils import strutils
@@ -7,27 +8,39 @@ from mitmproxy.addons.browserup.har.har_builder import HarBuilder
 from mitmproxy.addons.browserup.har.har_capture_types import HarCaptureTypes
 from datetime import datetime
 from datetime import timezone
-from mitmproxy import ctx
 
 # all the specifics to do with converting a flow into a HAR
 # A list of server seen till now is maintained so we can avoid
 # using 'connect' time for entries that use an existing connection.
 SERVERS_SEEN: typing.Set[connection.Server] = set()
 
-DEFAULT_PAGE_REF = "Default"
-DEFAULT_PAGE_TITLE = "Default"
-REQUEST_SUBMITTED_FLAG = "_request_submitted"
+REQUEST_SUBMITTED_FLAG = "_submitted"
+
+STATIC_MIME_TYPES = {
+    'application/javascript', 'application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/svg+xml',
+    'image/webp', 'image/bmp', 'image/tiff', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'video/mp4',
+    'video/webm', 'video/ogg', 'video/quicktime', 'font/woff', 'font/woff2', 'font/ttf', 'image/x-icon',
+    'application/zip', 'application/x-rar-compressed', 'application/x-tar', 'application/x-7z-compressed',
+    'application/octet-stream', 'application/x-shockwave-flash', 'text/css'
+}
 
 
 class FlowCaptureMixin(object):
 
     def capture_request(self, flow):
         full_url = self.get_full_url(flow.request)
-        ctx.log.debug('Populating har entry for request: {}'.format(full_url))
+        if 'BrowserUpData' in full_url or 'detectportal.firefox.com' in full_url:
+            logging.info('Ignored, capturing nothing.')
+            return
+
+        logging.info('Populating har entry for request: {}'.format(full_url))
 
         har_entry = flow.get_har_entry()
-        har_entry['pageref'] = self.get_current_page_ref()
+
         har_entry['startedDateTime'] = datetime.fromtimestamp(flow.request.timestamp_start, timezone.utc).isoformat()
+
+        logging.info('Har startedDateTime for request: {} is {}'.format(full_url, har_entry['startedDateTime']))
+
         har_request = HarBuilder.entry_request()
         har_request['method'] = flow.request.method
         har_request['url'] = full_url
@@ -42,7 +55,7 @@ class FlowCaptureMixin(object):
         if flow.request is not None:
             req_url = flow.request.url
 
-        ctx.log.debug('Incoming request, url: {}'.format(req_url))
+        logging.info('Incoming request, url: {}'.format(req_url))
 
         if HarCaptureTypes.REQUEST_COOKIES in self.har_capture_types:
             har_entry['request']['cookies'] = self.format_request_cookies(flow.request.cookies.fields)
@@ -65,7 +78,13 @@ class FlowCaptureMixin(object):
         flow.set_har_entry(har_entry)
 
     def capture_response(self, flow):
-        ctx.log.debug('Incoming response for request to url: {}'.format(flow.request.url))
+        full_url = self.get_full_url(flow.request)
+
+        if 'BrowserUpData' in full_url or 'detectportal.firefox.com' in full_url:
+            logging.info('BrowserUpData response or ignored response, capturing nothing.')
+            return
+
+        logging.debug('Incoming response for request to url: {}'.format(full_url))
 
         t = HarBuilder.entry_timings()
         t['send'] = self.diff_millis(flow.request.timestamp_end, flow.request.timestamp_start)
@@ -87,9 +106,12 @@ class FlowCaptureMixin(object):
 
         # Response body size and encoding
         response_body_size = len(flow.response.raw_content) if flow.response.raw_content else 0
-        response_body_decoded_size = len(
-            flow.response.content) if flow.response.content else 0
+        response_body_decoded_size = len(flow.response.content) if flow.response.content else 0
         response_body_compression = response_body_decoded_size - response_body_size
+
+        if flow.metadata.get('injected_script_len') and response_body_size > 0:
+            logging.debug(f"Subtracting injected script length of {flow.metadata.get('injected_script_len')}")
+            response_body_size = response_body_size - flow.metadata.get('injected_script_len')
 
         har_response = HarBuilder.entry_response()
         har_response["status"] = flow.response.status_code
@@ -110,6 +132,16 @@ class FlowCaptureMixin(object):
         content['size'] = response_body_size
         content['compression'] = response_body_compression
         content['mimeType'] = flow.response.headers.get('Content-Type', '')
+
+        if HarCaptureTypes.RESPONSE_DYNAMIC_CONTENT in self.har_capture_types:
+            mime_type = flow.response.headers.get('Content-Type', '').split(';')[0].strip()
+            # Skip capturing if mime_type is in the types to ignore
+            if mime_type not in STATIC_MIME_TYPES:
+                if strutils.is_mostly_bin(flow.response.content):
+                    har_response["content"]["text"] = base64.b64encode(flow.response.content).decode()
+                    har_response["content"]["encoding"] = "base64"
+                else:
+                    har_response["content"]["text"] = flow.response.get_text(strict=False)
 
         if HarCaptureTypes.RESPONSE_CONTENT in self.har_capture_types:
             if strutils.is_mostly_bin(flow.response.content):
@@ -134,26 +166,33 @@ class FlowCaptureMixin(object):
                 flow.server_conn.ip_address[0])
 
         flow.set_har_entry(har_entry)
-        ctx.log.debug('Populated har entry for response: {}, entry: {}'.format(flow.request.url, str(har_entry)))
 
     def capture_websocket_message(self, flow):
-        if HarCaptureTypes.WEBSOCKET_MESSAGES in self.har_capture_types:
-            har_entry = flow.get_har_entry()
-            msg = flow.websocket.messages[-1]
+        full_url = self.get_full_url(flow.request)
+        if 'BrowserUpData' in full_url or 'devtools' in full_url:
+            logging.info('BrowserUpData websocket, capturing nothing.')
+        else:
+            logging.info('Capturing WS data.')
+            if HarCaptureTypes.WEBSOCKET_MESSAGES in self.har_capture_types:
+                har_entry = flow.get_har_entry()
+                msg = flow.websocket.messages[-1]
+                data = msg.content
+                try:
+                    data = data.decode("utf-8")
+                except (UnicodeDecodeError, AttributeError):
+                    pass
 
-            data = msg.content
-            try:
-                data = data.decode("utf-8")
-            except (UnicodeDecodeError, AttributeError):
-                pass
+                msg = {
+                    "type": 'send' if msg.from_client else 'receive',
+                    "opcode": msg.type.value,
+                    "data": data,
+                    "time": msg.timestamp
+                }
 
-            har_entry.setdefault("_webSocketMessages", []).append({
-                "type": 'send' if msg.from_client else 'receive',
-                "opcode": msg.type.value,
-                "data": data,
-                "time": msg.timestamp
-            })
-            flow.set_har_entry(har_entry)
+                msgs = har_entry.get('_webSocketMessages', [])
+                msgs.append(msg)
+                har_entry['_webSocketMessages'] = msgs
+                flow.set_har_entry(har_entry)
 
     # for all of these:  Use -1 if the timing does not apply to the current request.
     # Time required to create TCP connection.

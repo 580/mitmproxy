@@ -4,27 +4,21 @@
 from mitmproxy import addons
 from mitmproxy import options
 from mitmproxy import master
+
 from mitmproxy.addons import dumper, termlog, keepserving, readfile
 from mitmproxy.addons.browserup import har_capture_addon, \
-    browserup_addons_manager, latency_addon
+    browserup_addons_manager, latency_addon, browser_data_addon
 
-
-class ErrorCheck:
-    def __init__(self):
-        self.has_errored = False
-
-    def add_log(self, e):
-        if e.level == "error":
-            self.has_errored = True
+from mitmproxy.addons.errorcheck import ErrorCheck
 
 
 class BrowserupProxyMaster(master.Master):
 
     def __init__(
-        self,
-        options: options.Options,
-        with_termlog=True,
-        with_dumper=True,
+            self,
+            options: options.Options,
+            with_termlog=True,
+            with_dumper=True,
     ) -> None:
         super().__init__(options)
         self.errorcheck = ErrorCheck()
@@ -34,9 +28,9 @@ class BrowserupProxyMaster(master.Master):
 
         self.addons.add(dumper.Dumper())
 
-        self.addons.add(browserup_addons_manager.BrowserUpAddonsManagerAddOn(),
-                        har_capture_addon.HarCaptureAddOn(), latency_addon.LatencyAddOn())
-        print("-----------------------------> starting!!--------------")
+        harCaptureAddon = har_capture_addon.HarCaptureAddOn()
+        self.addons.add(browserup_addons_manager.BrowserUpAddonsManagerAddOn(), harCaptureAddon,
+                        browser_data_addon.BrowserDataAddOn(harCaptureAddon), latency_addon.LatencyAddOn())
         self.addons.add(
             keepserving.KeepServing(),
             readfile.ReadFileStdin(),

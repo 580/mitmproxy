@@ -1,12 +1,14 @@
+from __future__ import annotations
 import asyncio
 import hashlib
 import json
 import logging
 import os.path
 import re
+from collections.abc import Sequence
 from io import BytesIO
 from itertools import islice
-from typing import ClassVar, Optional, Sequence, Union
+from typing import ClassVar, Optional, Union
 
 import tornado.escape
 import tornado.web
@@ -21,8 +23,10 @@ from mitmproxy import io
 from mitmproxy import log
 from mitmproxy import optmanager
 from mitmproxy import version
+from mitmproxy.dns import DNSFlow
 from mitmproxy.http import HTTPFlow
 from mitmproxy.tcp import TCPFlow, TCPMessage
+from mitmproxy.udp import UDPFlow, UDPMessage
 from mitmproxy.utils.emoji import emoji
 from mitmproxy.utils.strutils import always_str
 from mitmproxy.websocket import WebSocketMessage
@@ -58,6 +62,8 @@ def flow_to_json(flow: mitmproxy.flow.Flow) -> dict:
         "type": flow.type,
         "modified": flow.modified(),
         "marked": emoji.get(flow.marked, "🔴") if flow.marked else "",
+        "comment": flow.comment,
+        "timestamp_created": flow.timestamp_created,
     }
 
     if flow.client_conn:
@@ -138,26 +144,36 @@ def flow_to_json(flow: mitmproxy.flow.Flow) -> dict:
                 "timestamp_end": flow.response.timestamp_end,
             }
             if flow.response.data.trailers:
-                f["response"]["trailers"] = tuple(flow.response.data.trailers.items(True))
+                f["response"]["trailers"] = tuple(
+                    flow.response.data.trailers.items(True)
+                )
 
         if flow.websocket:
             f["websocket"] = {
                 "messages_meta": {
-                    "contentLength": sum(len(x.content) for x in flow.websocket.messages),
+                    "contentLength": sum(
+                        len(x.content) for x in flow.websocket.messages
+                    ),
                     "count": len(flow.websocket.messages),
-                    "timestamp_last": flow.websocket.messages[-1].timestamp if flow.websocket.messages else None,
+                    "timestamp_last": flow.websocket.messages[-1].timestamp
+                    if flow.websocket.messages
+                    else None,
                 },
                 "closed_by_client": flow.websocket.closed_by_client,
                 "close_code": flow.websocket.close_code,
                 "close_reason": flow.websocket.close_reason,
                 "timestamp_end": flow.websocket.timestamp_end,
             }
-    elif isinstance(flow, TCPFlow):
+    elif isinstance(flow, (TCPFlow, UDPFlow)):
         f["messages_meta"] = {
             "contentLength": sum(len(x.content) for x in flow.messages),
             "count": len(flow.messages),
             "timestamp_last": flow.messages[-1].timestamp if flow.messages else None,
         }
+    elif isinstance(flow, DNSFlow):
+        f["request"] = flow.request.to_json()
+        if flow.response:
+            f["response"] = flow.response.to_json()
 
     return f
 
@@ -166,7 +182,7 @@ def logentry_to_json(e: log.LogEntry) -> dict:
     return {
         "id": id(e),  # we just need some kind of id.
         "message": e.msg,
-        "level": e.level
+        "level": e.level,
     }
 
 
@@ -195,17 +211,19 @@ class RequestHandler(tornado.web.RequestHandler):
             "Content-Security-Policy",
             "default-src 'self'; "
             "connect-src 'self' ws:; "
-            "style-src   'self' 'unsafe-inline'"
+            "style-src   'self' 'unsafe-inline'",
         )
 
     @property
     def json(self):
-        if not self.request.headers.get("Content-Type", "").startswith("application/json"):
+        if not self.request.headers.get("Content-Type", "").startswith(
+            "application/json"
+        ):
             raise APIError(400, "Invalid Content-Type, expected application/json.")
         try:
             return json.loads(self.request.body.decode())
         except Exception as e:
-            raise APIError(400, "Malformed JSON: {}".format(str(e)))
+            raise APIError(400, f"Malformed JSON: {str(e)}")
 
     @property
     def filecontents(self):
@@ -252,30 +270,37 @@ class IndexHandler(RequestHandler):
 
 class FilterHelp(RequestHandler):
     def get(self):
-        self.write(dict(
-            commands=flowfilter.help
-        ))
+        self.write(dict(commands=flowfilter.help))
 
 
 class WebSocketEventBroadcaster(tornado.websocket.WebSocketHandler):
     # raise an error if inherited class doesn't specify its own instance.
-    connections: ClassVar[set]
+    connections: ClassVar[set[WebSocketEventBroadcaster]]
 
     def open(self):
         self.connections.add(self)
 
     def on_close(self):
-        self.connections.remove(self)
+        self.connections.discard(self)
+
+    @classmethod
+    def send(cls, conn: WebSocketEventBroadcaster, message: bytes) -> None:
+        async def wrapper():
+            try:
+                await conn.write_message(message)
+            except tornado.websocket.WebSocketClosedError:
+                cls.connections.discard(conn)
+
+        asyncio.ensure_future(wrapper())
 
     @classmethod
     def broadcast(cls, **kwargs):
-        message = json.dumps(kwargs, ensure_ascii=False).encode("utf8", "surrogateescape")
+        message = json.dumps(kwargs, ensure_ascii=False).encode(
+            "utf8", "surrogateescape"
+        )
 
         for conn in cls.connections:
-            try:
-                conn.write_message(message)
-            except Exception:  # pragma: no cover
-                logging.error("Error sending message", exc_info=True)
+            cls.send(conn, message)
 
 
 class ClientConnection(WebSocketEventBroadcaster):
@@ -292,13 +317,19 @@ class DumpFlows(RequestHandler):
         self.set_header("Content-Disposition", "attachment; filename=flows")
         self.set_header("Content-Type", "application/octet-stream")
 
-        bio = BytesIO()
-        fw = io.FlowWriter(bio)
-        for f in self.view:
-            fw.add(f)
+        try:
+            match = flowfilter.parse(self.request.arguments["filter"][0].decode())
+        except ValueError:  # thrown py flowfilter.parse if filter is invalid
+            raise APIError(400, f"Invalid filter argument / regex")
+        except (KeyError, IndexError):  # Key+Index: ["filter"][0] can fail, if it's not set
+            match = bool  # returns always true
 
-        self.write(bio.getvalue())
-        bio.close()
+        with BytesIO() as bio:
+            fw = io.FlowWriter(bio)
+            for f in self.view:
+                if match(f):
+                    fw.add(f)
+            self.write(bio.getvalue())
 
     def post(self):
         self.view.clear()
@@ -461,13 +492,15 @@ class FlowContentView(RequestHandler):
     def message_to_json(
         self,
         viewname: str,
-        message: Union[http.Message, TCPMessage, WebSocketMessage],
-        flow: Union[HTTPFlow, TCPFlow],
-        max_lines: Optional[int] = None
+        message: Union[http.Message, TCPMessage, UDPMessage, WebSocketMessage],
+        flow: Union[HTTPFlow, TCPFlow, UDPFlow],
+        max_lines: Optional[int] = None,
     ):
-        description, lines, error = contentviews.get_message_content_view(viewname, message, flow)
+        description, lines, error = contentviews.get_message_content_view(
+            viewname, message, flow
+        )
         if error:
-            self.master.log.error(error)
+            logging.error(error)
         if max_lines:
             lines = islice(lines, max_lines)
 
@@ -478,7 +511,7 @@ class FlowContentView(RequestHandler):
 
     def get(self, flow_id, message, content_view):
         flow = self.flow
-        assert isinstance(flow, (HTTPFlow, TCPFlow))
+        assert isinstance(flow, (HTTPFlow, TCPFlow, UDPFlow))
 
         if self.request.arguments.get("lines"):
             max_lines = int(self.request.arguments["lines"][0])
@@ -488,7 +521,7 @@ class FlowContentView(RequestHandler):
         if message == "messages":
             if isinstance(flow, HTTPFlow) and flow.websocket:
                 messages = flow.websocket.messages
-            elif isinstance(flow, TCPFlow):
+            elif isinstance(flow, (TCPFlow, UDPFlow)):
                 messages = flow.messages
             else:
                 raise APIError(400, f"This flow has no messages.")
@@ -522,7 +555,9 @@ class Commands(RequestHandler):
                     }
                     for param in cmd.parameters
                 ],
-                "return_type": command.typename(cmd.return_type) if cmd.return_type else None,
+                "return_type": command.typename(cmd.return_type)
+                if cmd.return_type
+                else None,
                 "signature_help": cmd.signature_help(),
             }
         self.write(commands)
@@ -532,20 +567,20 @@ class ExecuteCommand(RequestHandler):
     def post(self, cmd: str):
         # TODO: We should parse query strings here, this API is painful.
         try:
-            args = self.json['arguments']
+            args = self.json["arguments"]
         except APIError:
             args = []
         try:
             result = self.master.commands.call_strings(cmd, args)
         except Exception as e:
-            self.write({
-                "error": str(e)
-            })
+            self.write({"error": str(e)})
         else:
-            self.write({
-                "value": result,
-                # "type": command.typename(type(result)) if result is not None else "none"
-            })
+            self.write(
+                {
+                    "value": result,
+                    # "type": command.typename(type(result)) if result is not None else "none"
+                }
+            )
 
 
 class Events(RequestHandler):
@@ -579,25 +614,32 @@ class DnsRebind(RequestHandler):
         raise tornado.web.HTTPError(
             403,
             reason="To protect against DNS rebinding, mitmweb can only be accessed by IP at the moment. "
-                   "(https://github.com/mitmproxy/mitmproxy/issues/3234)"
+                   "(https://github.com/mitmproxy/mitmproxy/issues/3234)",
         )
 
 
-class Conf(RequestHandler):
+class State(RequestHandler):
     def get(self):
-        conf = {
-            "static": False,
+        self.write({
             "version": version.VERSION,
-            "contentViews": [v.name for v in contentviews.views if v.name != "Query"]
-        }
-        self.write(f"MITMWEB_CONF = {json.dumps(conf)};")
-        self.set_header("content-type", "application/javascript")
+            "contentViews": [v.name for v in contentviews.views if v.name != "Query"],
+            "servers": [s.to_json() for s in self.master.proxyserver.servers]
+        })
+
+
+class GZipContentAndFlowFiles(tornado.web.GZipContentEncoding):
+    CONTENT_TYPES = {
+        "application/octet-stream",
+        *tornado.web.GZipContentEncoding.CONTENT_TYPES
+    }
 
 
 class Application(tornado.web.Application):
     master: "mitmproxy.tools.web.master.WebMaster"
 
-    def __init__(self, master: "mitmproxy.tools.web.master.WebMaster", debug: bool) -> None:
+    def __init__(
+        self, master: "mitmproxy.tools.web.master.WebMaster", debug: bool
+    ) -> None:
         self.master = master
         super().__init__(
             default_host="dns-rebind-protection",
@@ -607,12 +649,13 @@ class Application(tornado.web.Application):
             cookie_secret=os.urandom(256),
             debug=debug,
             autoreload=False,
+            transforms=[GZipContentAndFlowFiles],
         )
 
         self.add_handlers("dns-rebind-protection", [(r"/.*", DnsRebind)])
         self.add_handlers(
             # make mitmweb accessible by IP only to prevent DNS rebinding.
-            r'^(localhost|[0-9.]+|\[[0-9a-fA-F:]+\])$',
+            r"^(localhost|[0-9.]+|\[[0-9a-fA-F:]+\])$",
             [
                 (r"/", IndexHandler),
                 (r"/filter-help(?:\.json)?", FilterHelp),
@@ -630,14 +673,18 @@ class Application(tornado.web.Application):
                 (r"/flows/(?P<flow_id>[0-9a-f\-]+)/duplicate", DuplicateFlow),
                 (r"/flows/(?P<flow_id>[0-9a-f\-]+)/replay", ReplayFlow),
                 (r"/flows/(?P<flow_id>[0-9a-f\-]+)/revert", RevertFlow),
-                (r"/flows/(?P<flow_id>[0-9a-f\-]+)/(?P<message>request|response|messages)/content.data", FlowContent),
+                (
+                    r"/flows/(?P<flow_id>[0-9a-f\-]+)/(?P<message>request|response|messages)/content.data",
+                    FlowContent,
+                ),
                 (
                     r"/flows/(?P<flow_id>[0-9a-f\-]+)/(?P<message>request|response|messages)/"
                     r"content/(?P<content_view>[0-9a-zA-Z\-\_%]+)(?:\.json)?",
-                    FlowContentView),
+                    FlowContentView,
+                ),
                 (r"/clear", ClearAll),
                 (r"/options(?:\.json)?", Options),
                 (r"/options/save", SaveOptions),
-                (r"/conf\.js", Conf),
-            ]
+                (r"/state(?:\.json)?", State),
+            ],
         )

@@ -5,14 +5,15 @@ import collections
 import textwrap
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Optional, List, ClassVar, Deque, NamedTuple, Generator, Any, TypeVar
+from logging import DEBUG
+from typing import Any, ClassVar, Generator, NamedTuple, Optional, TypeVar
 
 from mitmproxy.connection import Connection
 from mitmproxy.proxy import commands, events
 from mitmproxy.proxy.commands import Command, StartHook
 from mitmproxy.proxy.context import Context
 
-T = TypeVar('T')
+T = TypeVar("T")
 CommandGenerator = Generator[Command, Any, T]
 """
 A function annotated with CommandGenerator[bool] may yield commands and ultimately return a boolean value.
@@ -23,6 +24,7 @@ class Paused(NamedTuple):
     """
     State of a layer that's paused because it is waiting for a command reply.
     """
+
     command: commands.Command
     generator: CommandGenerator
 
@@ -47,6 +49,7 @@ class Layer:
 
     Technically this is very similar to how coroutines are implemented.
     """
+
     __last_debug_message: ClassVar[str] = ""
     context: Context
     _paused: Optional[Paused]
@@ -54,7 +57,7 @@ class Layer:
     If execution is currently paused, this attribute stores the paused coroutine
     and the command for which we are expecting a reply.
     """
-    _paused_event_queue: Deque[events.Event]
+    _paused_event_queue: collections.deque[events.Event]
     """
     All events that have occurred since execution was paused.
     These will be replayed to ._child_layer once we resume.
@@ -95,10 +98,7 @@ class Layer:
                 message = message[:256] + "…"
         else:
             Layer.__last_debug_message = message
-        return commands.Log(
-            textwrap.indent(message, self.debug),
-            "debug"
-        )
+        return commands.Log(textwrap.indent(message, self.debug), DEBUG)
 
     @property
     def stack_pos(self) -> str:
@@ -108,7 +108,7 @@ class Layer:
         except ValueError:
             return repr(self)
         else:
-            return " >> ".join(repr(x) for x in self.context.layers[:idx + 1])
+            return " >> ".join(repr(x) for x in self.context.layers[: idx + 1])
 
     @abstractmethod
     def _handle_event(self, event: events.Event) -> CommandGenerator[None]:
@@ -119,8 +119,8 @@ class Layer:
         if self._paused:
             # did we just receive the reply we were waiting for?
             pause_finished = (
-                isinstance(event, events.CommandCompleted) and
-                event.command is self._paused.command
+                isinstance(event, events.CommandCompleted)
+                and event.command is self._paused.command
             )
             if self.debug is not None:
                 yield self.__debug(f"{'>>' if pause_finished else '>!'} {event}")
@@ -227,14 +227,16 @@ class Layer:
             yield from self.__process(command_generator)
 
 
-mevents = events  # alias here because autocomplete above should not have aliased version.
+mevents = (
+    events  # alias here because autocomplete above should not have aliased version.
+)
 
 
 class NextLayer(Layer):
     layer: Optional[Layer]
     """The next layer. To be set by an addon."""
 
-    events: List[mevents.Event]
+    events: list[mevents.Event]
     """All events that happened before a decision was made."""
 
     _ask_on_start: bool
@@ -262,7 +264,10 @@ class NextLayer(Layer):
         # We receive new data. Let's find out if we can determine the next layer now?
         if self._ask_on_start and isinstance(event, events.Start):
             yield from self._ask()
-        elif isinstance(event, mevents.ConnectionClosed) and event.connection == self.context.client:
+        elif (
+            isinstance(event, mevents.ConnectionClosed)
+            and event.connection == self.context.client
+        ):
             # If we have not determined the next protocol yet and the client already closes the connection,
             # we abort everything.
             yield commands.CloseConnection(self.context.client)
@@ -280,7 +285,7 @@ class NextLayer(Layer):
         # Has an addon decided on the next layer yet?
         if self.layer:
             if self.debug:
-                yield commands.Log(f"{self.debug}[nextlayer] {self.layer!r}", "debug")
+                yield commands.Log(f"{self.debug}[nextlayer] {self.layer!r}", DEBUG)
             for e in self.events:
                 yield from self.layer.handle_event(e)
             self.events.clear()
@@ -304,7 +309,8 @@ class NextLayer(Layer):
 
     def _data(self, connection: Connection):
         data = (
-            e.data for e in self.events
+            e.data
+            for e in self.events
             if isinstance(e, mevents.DataReceived) and e.connection == connection
         )
         return b"".join(data)
@@ -317,4 +323,5 @@ class NextLayerHook(StartHook):
 
     (by default, this is done by mitmproxy.addons.NextLayer)
     """
+
     data: NextLayer

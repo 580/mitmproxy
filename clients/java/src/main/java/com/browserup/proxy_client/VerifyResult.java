@@ -14,53 +14,77 @@
 package com.browserup.proxy_client;
 
 import java.util.Objects;
-import java.util.Arrays;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
 import java.io.IOException;
+import java.util.Arrays;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.TypeAdapterFactory;
+import com.google.gson.reflect.TypeToken;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
+import java.io.IOException;
+
+import java.lang.reflect.Type;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+
+import com.browserup.proxy_client.JSON;
 
 /**
  * VerifyResult
  */
 @javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen")
 public class VerifyResult {
-  public static final String SERIALIZED_NAME_TYPE = "type";
-  @SerializedName(SERIALIZED_NAME_TYPE)
-  private String type;
+  public static final String SERIALIZED_NAME_RESULT = "result";
+  @SerializedName(SERIALIZED_NAME_RESULT)
+  private Boolean result;
 
   public static final String SERIALIZED_NAME_NAME = "name";
   @SerializedName(SERIALIZED_NAME_NAME)
   private String name;
 
-  public static final String SERIALIZED_NAME_RESULT = "result";
-  @SerializedName(SERIALIZED_NAME_RESULT)
-  private Boolean result;
+  public static final String SERIALIZED_NAME_TYPE = "type";
+  @SerializedName(SERIALIZED_NAME_TYPE)
+  private String type;
 
+  public VerifyResult() {
+  }
 
-  public VerifyResult type(String type) {
+  public VerifyResult result(Boolean result) {
     
-    this.type = type;
+    this.result = result;
     return this;
   }
 
    /**
-   * Type
-   * @return type
+   * Result True / False
+   * @return result
   **/
-  @ApiModelProperty(required = true, value = "Type")
-
-  public String getType() {
-    return type;
+  @javax.annotation.Nullable
+  public Boolean getResult() {
+    return result;
   }
 
 
-  public void setType(String type) {
-    this.type = type;
+  public void setResult(Boolean result) {
+    this.result = result;
   }
 
 
@@ -74,8 +98,7 @@ public class VerifyResult {
    * Name
    * @return name
   **/
-  @ApiModelProperty(required = true, value = "Name")
-
+  @javax.annotation.Nullable
   public String getName() {
     return name;
   }
@@ -86,26 +109,26 @@ public class VerifyResult {
   }
 
 
-  public VerifyResult result(Boolean result) {
+  public VerifyResult type(String type) {
     
-    this.result = result;
+    this.type = type;
     return this;
   }
 
    /**
-   * Result True / False
-   * @return result
+   * Type
+   * @return type
   **/
-  @ApiModelProperty(required = true, value = "Result True / False")
-
-  public Boolean getResult() {
-    return result;
+  @javax.annotation.Nullable
+  public String getType() {
+    return type;
   }
 
 
-  public void setResult(Boolean result) {
-    this.result = result;
+  public void setType(String type) {
+    this.type = type;
   }
+
 
 
   @Override
@@ -117,23 +140,23 @@ public class VerifyResult {
       return false;
     }
     VerifyResult verifyResult = (VerifyResult) o;
-    return Objects.equals(this.type, verifyResult.type) &&
+    return Objects.equals(this.result, verifyResult.result) &&
         Objects.equals(this.name, verifyResult.name) &&
-        Objects.equals(this.result, verifyResult.result);
+        Objects.equals(this.type, verifyResult.type);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, name, result);
+    return Objects.hash(result, name, type);
   }
 
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
     sb.append("class VerifyResult {\n");
-    sb.append("    type: ").append(toIndentedString(type)).append("\n");
-    sb.append("    name: ").append(toIndentedString(name)).append("\n");
     sb.append("    result: ").append(toIndentedString(result)).append("\n");
+    sb.append("    name: ").append(toIndentedString(name)).append("\n");
+    sb.append("    type: ").append(toIndentedString(type)).append("\n");
     sb.append("}");
     return sb.toString();
   }
@@ -149,5 +172,97 @@ public class VerifyResult {
     return o.toString().replace("\n", "\n    ");
   }
 
+
+  public static HashSet<String> openapiFields;
+  public static HashSet<String> openapiRequiredFields;
+
+  static {
+    // a set of all properties/fields (JSON key names)
+    openapiFields = new HashSet<String>();
+    openapiFields.add("result");
+    openapiFields.add("name");
+    openapiFields.add("type");
+
+    // a set of required properties/fields (JSON key names)
+    openapiRequiredFields = new HashSet<String>();
+  }
+
+ /**
+  * Validates the JSON Element and throws an exception if issues found
+  *
+  * @param jsonElement JSON Element
+  * @throws IOException if the JSON Element is invalid with respect to VerifyResult
+  */
+  public static void validateJsonElement(JsonElement jsonElement) throws IOException {
+      if (jsonElement == null) {
+        if (!VerifyResult.openapiRequiredFields.isEmpty()) { // has required fields but JSON element is null
+          throw new IllegalArgumentException(String.format("The required field(s) %s in VerifyResult is not found in the empty JSON string", VerifyResult.openapiRequiredFields.toString()));
+        }
+      }
+
+      Set<Entry<String, JsonElement>> entries = jsonElement.getAsJsonObject().entrySet();
+      // check to see if the JSON string contains additional fields
+      for (Entry<String, JsonElement> entry : entries) {
+        if (!VerifyResult.openapiFields.contains(entry.getKey())) {
+          throw new IllegalArgumentException(String.format("The field `%s` in the JSON string is not defined in the `VerifyResult` properties. JSON: %s", entry.getKey(), jsonElement.toString()));
+        }
+      }
+        JsonObject jsonObj = jsonElement.getAsJsonObject();
+      if ((jsonObj.get("name") != null && !jsonObj.get("name").isJsonNull()) && !jsonObj.get("name").isJsonPrimitive()) {
+        throw new IllegalArgumentException(String.format("Expected the field `name` to be a primitive type in the JSON string but got `%s`", jsonObj.get("name").toString()));
+      }
+      if ((jsonObj.get("type") != null && !jsonObj.get("type").isJsonNull()) && !jsonObj.get("type").isJsonPrimitive()) {
+        throw new IllegalArgumentException(String.format("Expected the field `type` to be a primitive type in the JSON string but got `%s`", jsonObj.get("type").toString()));
+      }
+  }
+
+  public static class CustomTypeAdapterFactory implements TypeAdapterFactory {
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
+       if (!VerifyResult.class.isAssignableFrom(type.getRawType())) {
+         return null; // this class only serializes 'VerifyResult' and its subtypes
+       }
+       final TypeAdapter<JsonElement> elementAdapter = gson.getAdapter(JsonElement.class);
+       final TypeAdapter<VerifyResult> thisAdapter
+                        = gson.getDelegateAdapter(this, TypeToken.get(VerifyResult.class));
+
+       return (TypeAdapter<T>) new TypeAdapter<VerifyResult>() {
+           @Override
+           public void write(JsonWriter out, VerifyResult value) throws IOException {
+             JsonObject obj = thisAdapter.toJsonTree(value).getAsJsonObject();
+             elementAdapter.write(out, obj);
+           }
+
+           @Override
+           public VerifyResult read(JsonReader in) throws IOException {
+             JsonElement jsonElement = elementAdapter.read(in);
+             validateJsonElement(jsonElement);
+             return thisAdapter.fromJsonTree(jsonElement);
+           }
+
+       }.nullSafe();
+    }
+  }
+
+ /**
+  * Create an instance of VerifyResult given an JSON string
+  *
+  * @param jsonString JSON string
+  * @return An instance of VerifyResult
+  * @throws IOException if the JSON string is invalid with respect to VerifyResult
+  */
+  public static VerifyResult fromJson(String jsonString) throws IOException {
+    return JSON.getGson().fromJson(jsonString, VerifyResult.class);
+  }
+
+ /**
+  * Convert an instance of VerifyResult to an JSON string
+  *
+  * @return JSON string
+  */
+  public String toJson() {
+    return JSON.getGson().toJson(this);
+  }
 }
 

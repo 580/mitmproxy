@@ -177,7 +177,7 @@ exports[`should render columns: method 1`] = `
         <td
           class="col-method"
         >
-          GET
+          WSS
         </td>
       </tr>
     </tbody>
@@ -214,9 +214,7 @@ exports[`should render columns: quickactions 1`] = `
       <tr>
         <td
           class="col-quickactions"
-        >
-          <div />
-        </td>
+        />
       </tr>
     </tbody>
   </table>
@@ -278,7 +276,7 @@ exports[`should render columns: timestamp 1`] = `
     <tbody>
       <tr>
         <td
-          class="col-start"
+          class="col-timestamp"
         >
           1999-12-31 23:00:00.000
         </td>

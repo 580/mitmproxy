@@ -7,10 +7,10 @@
 | **started_date_time** | **Time** |  |  |
 | **id** | **String** |  |  |
 | **title** | **String** |  |  |
-| **_verifications** | [**Array&lt;VerifyResult&gt;**](VerifyResult.md) |  |  |
+| **_verifications** | [**Array&lt;VerifyResult&gt;**](VerifyResult.md) |  | [optional] |
 | **_counters** | [**Array&lt;Counter&gt;**](Counter.md) |  | [optional] |
 | **_errors** | [**Array&lt;Error&gt;**](Error.md) |  | [optional] |
-| **page_timings** | [**PagePageTimings**](PagePageTimings.md) |  |  |
+| **page_timings** | [**PageTimings**](PageTimings.md) |  |  |
 | **comment** | **String** |  | [optional] |
 
 ## Example

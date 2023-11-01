@@ -14,22 +14,45 @@
 package com.browserup.proxy_client;
 
 import java.util.Objects;
-import java.util.Arrays;
 import com.browserup.proxy_client.Counter;
 import com.browserup.proxy_client.Error;
-import com.browserup.proxy_client.PagePageTimings;
+import com.browserup.proxy_client.PageTimings;
 import com.browserup.proxy_client.VerifyResult;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
 import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.TypeAdapterFactory;
+import com.google.gson.reflect.TypeToken;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
+import java.io.IOException;
+
+import java.lang.reflect.Type;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+
+import com.browserup.proxy_client.JSON;
 
 /**
  * Page
@@ -54,20 +77,22 @@ public class Page {
 
   public static final String SERIALIZED_NAME_COUNTERS = "_counters";
   @SerializedName(SERIALIZED_NAME_COUNTERS)
-  private List<Counter> counters = null;
+  private List<Counter> counters = new ArrayList<>();
 
   public static final String SERIALIZED_NAME_ERRORS = "_errors";
   @SerializedName(SERIALIZED_NAME_ERRORS)
-  private List<Error> errors = null;
+  private List<Error> errors = new ArrayList<>();
 
   public static final String SERIALIZED_NAME_PAGE_TIMINGS = "pageTimings";
   @SerializedName(SERIALIZED_NAME_PAGE_TIMINGS)
-  private PagePageTimings pageTimings;
+  private PageTimings pageTimings;
 
   public static final String SERIALIZED_NAME_COMMENT = "comment";
   @SerializedName(SERIALIZED_NAME_COMMENT)
   private String comment;
 
+  public Page() {
+  }
 
   public Page startedDateTime(OffsetDateTime startedDateTime) {
     
@@ -79,8 +104,7 @@ public class Page {
    * Get startedDateTime
    * @return startedDateTime
   **/
-  @ApiModelProperty(required = true, value = "")
-
+  @javax.annotation.Nonnull
   public OffsetDateTime getStartedDateTime() {
     return startedDateTime;
   }
@@ -101,8 +125,7 @@ public class Page {
    * Get id
    * @return id
   **/
-  @ApiModelProperty(required = true, value = "")
-
+  @javax.annotation.Nonnull
   public String getId() {
     return id;
   }
@@ -123,8 +146,7 @@ public class Page {
    * Get title
    * @return title
   **/
-  @ApiModelProperty(required = true, value = "")
-
+  @javax.annotation.Nonnull
   public String getTitle() {
     return title;
   }
@@ -142,6 +164,9 @@ public class Page {
   }
 
   public Page addVerificationsItem(VerifyResult verificationsItem) {
+    if (this.verifications == null) {
+      this.verifications = new ArrayList<>();
+    }
     this.verifications.add(verificationsItem);
     return this;
   }
@@ -150,8 +175,7 @@ public class Page {
    * Get verifications
    * @return verifications
   **/
-  @ApiModelProperty(required = true, value = "")
-
+  @javax.annotation.Nullable
   public List<VerifyResult> getVerifications() {
     return verifications;
   }
@@ -181,8 +205,6 @@ public class Page {
    * @return counters
   **/
   @javax.annotation.Nullable
-  @ApiModelProperty(value = "")
-
   public List<Counter> getCounters() {
     return counters;
   }
@@ -212,8 +234,6 @@ public class Page {
    * @return errors
   **/
   @javax.annotation.Nullable
-  @ApiModelProperty(value = "")
-
   public List<Error> getErrors() {
     return errors;
   }
@@ -224,7 +244,7 @@ public class Page {
   }
 
 
-  public Page pageTimings(PagePageTimings pageTimings) {
+  public Page pageTimings(PageTimings pageTimings) {
     
     this.pageTimings = pageTimings;
     return this;
@@ -234,14 +254,13 @@ public class Page {
    * Get pageTimings
    * @return pageTimings
   **/
-  @ApiModelProperty(required = true, value = "")
-
-  public PagePageTimings getPageTimings() {
+  @javax.annotation.Nonnull
+  public PageTimings getPageTimings() {
     return pageTimings;
   }
 
 
-  public void setPageTimings(PagePageTimings pageTimings) {
+  public void setPageTimings(PageTimings pageTimings) {
     this.pageTimings = pageTimings;
   }
 
@@ -257,8 +276,6 @@ public class Page {
    * @return comment
   **/
   @javax.annotation.Nullable
-  @ApiModelProperty(value = "")
-
   public String getComment() {
     return comment;
   }
@@ -266,6 +283,51 @@ public class Page {
 
   public void setComment(String comment) {
     this.comment = comment;
+  }
+
+  /**
+   * A container for additional, undeclared properties.
+   * This is a holder for any undeclared properties as specified with
+   * the 'additionalProperties' keyword in the OAS document.
+   */
+  private Map<String, Object> additionalProperties;
+
+  /**
+   * Set the additional (undeclared) property with the specified name and value.
+   * If the property does not already exist, create it otherwise replace it.
+   *
+   * @param key name of the property
+   * @param value value of the property
+   * @return the Page instance itself
+   */
+  public Page putAdditionalProperty(String key, Object value) {
+    if (this.additionalProperties == null) {
+        this.additionalProperties = new HashMap<String, Object>();
+    }
+    this.additionalProperties.put(key, value);
+    return this;
+  }
+
+  /**
+   * Return the additional (undeclared) property.
+   *
+   * @return a map of objects
+   */
+  public Map<String, Object> getAdditionalProperties() {
+    return additionalProperties;
+  }
+
+  /**
+   * Return the additional (undeclared) property with the specified name.
+   *
+   * @param key name of the property
+   * @return an object
+   */
+  public Object getAdditionalProperty(String key) {
+    if (this.additionalProperties == null) {
+        return null;
+    }
+    return this.additionalProperties.get(key);
   }
 
 
@@ -285,12 +347,13 @@ public class Page {
         Objects.equals(this.counters, page.counters) &&
         Objects.equals(this.errors, page.errors) &&
         Objects.equals(this.pageTimings, page.pageTimings) &&
-        Objects.equals(this.comment, page.comment);
+        Objects.equals(this.comment, page.comment)&&
+        Objects.equals(this.additionalProperties, page.additionalProperties);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(startedDateTime, id, title, verifications, counters, errors, pageTimings, comment);
+    return Objects.hash(startedDateTime, id, title, verifications, counters, errors, pageTimings, comment, additionalProperties);
   }
 
   @Override
@@ -305,6 +368,7 @@ public class Page {
     sb.append("    errors: ").append(toIndentedString(errors)).append("\n");
     sb.append("    pageTimings: ").append(toIndentedString(pageTimings)).append("\n");
     sb.append("    comment: ").append(toIndentedString(comment)).append("\n");
+    sb.append("    additionalProperties: ").append(toIndentedString(additionalProperties)).append("\n");
     sb.append("}");
     return sb.toString();
   }
@@ -320,5 +384,188 @@ public class Page {
     return o.toString().replace("\n", "\n    ");
   }
 
+
+  public static HashSet<String> openapiFields;
+  public static HashSet<String> openapiRequiredFields;
+
+  static {
+    // a set of all properties/fields (JSON key names)
+    openapiFields = new HashSet<String>();
+    openapiFields.add("startedDateTime");
+    openapiFields.add("id");
+    openapiFields.add("title");
+    openapiFields.add("_verifications");
+    openapiFields.add("_counters");
+    openapiFields.add("_errors");
+    openapiFields.add("pageTimings");
+    openapiFields.add("comment");
+
+    // a set of required properties/fields (JSON key names)
+    openapiRequiredFields = new HashSet<String>();
+    openapiRequiredFields.add("startedDateTime");
+    openapiRequiredFields.add("id");
+    openapiRequiredFields.add("title");
+    openapiRequiredFields.add("pageTimings");
+  }
+
+ /**
+  * Validates the JSON Element and throws an exception if issues found
+  *
+  * @param jsonElement JSON Element
+  * @throws IOException if the JSON Element is invalid with respect to Page
+  */
+  public static void validateJsonElement(JsonElement jsonElement) throws IOException {
+      if (jsonElement == null) {
+        if (!Page.openapiRequiredFields.isEmpty()) { // has required fields but JSON element is null
+          throw new IllegalArgumentException(String.format("The required field(s) %s in Page is not found in the empty JSON string", Page.openapiRequiredFields.toString()));
+        }
+      }
+
+      // check to make sure all required properties/fields are present in the JSON string
+      for (String requiredField : Page.openapiRequiredFields) {
+        if (jsonElement.getAsJsonObject().get(requiredField) == null) {
+          throw new IllegalArgumentException(String.format("The required field `%s` is not found in the JSON string: %s", requiredField, jsonElement.toString()));
+        }
+      }
+        JsonObject jsonObj = jsonElement.getAsJsonObject();
+      if (!jsonObj.get("id").isJsonPrimitive()) {
+        throw new IllegalArgumentException(String.format("Expected the field `id` to be a primitive type in the JSON string but got `%s`", jsonObj.get("id").toString()));
+      }
+      if (!jsonObj.get("title").isJsonPrimitive()) {
+        throw new IllegalArgumentException(String.format("Expected the field `title` to be a primitive type in the JSON string but got `%s`", jsonObj.get("title").toString()));
+      }
+      if (jsonObj.get("_verifications") != null && !jsonObj.get("_verifications").isJsonNull()) {
+        JsonArray jsonArrayverifications = jsonObj.getAsJsonArray("_verifications");
+        if (jsonArrayverifications != null) {
+          // ensure the json data is an array
+          if (!jsonObj.get("_verifications").isJsonArray()) {
+            throw new IllegalArgumentException(String.format("Expected the field `_verifications` to be an array in the JSON string but got `%s`", jsonObj.get("_verifications").toString()));
+          }
+
+          // validate the optional field `_verifications` (array)
+          for (int i = 0; i < jsonArrayverifications.size(); i++) {
+            VerifyResult.validateJsonElement(jsonArrayverifications.get(i));
+          };
+        }
+      }
+      if (jsonObj.get("_counters") != null && !jsonObj.get("_counters").isJsonNull()) {
+        JsonArray jsonArraycounters = jsonObj.getAsJsonArray("_counters");
+        if (jsonArraycounters != null) {
+          // ensure the json data is an array
+          if (!jsonObj.get("_counters").isJsonArray()) {
+            throw new IllegalArgumentException(String.format("Expected the field `_counters` to be an array in the JSON string but got `%s`", jsonObj.get("_counters").toString()));
+          }
+
+          // validate the optional field `_counters` (array)
+          for (int i = 0; i < jsonArraycounters.size(); i++) {
+            Counter.validateJsonElement(jsonArraycounters.get(i));
+          };
+        }
+      }
+      if (jsonObj.get("_errors") != null && !jsonObj.get("_errors").isJsonNull()) {
+        JsonArray jsonArrayerrors = jsonObj.getAsJsonArray("_errors");
+        if (jsonArrayerrors != null) {
+          // ensure the json data is an array
+          if (!jsonObj.get("_errors").isJsonArray()) {
+            throw new IllegalArgumentException(String.format("Expected the field `_errors` to be an array in the JSON string but got `%s`", jsonObj.get("_errors").toString()));
+          }
+
+          // validate the optional field `_errors` (array)
+          for (int i = 0; i < jsonArrayerrors.size(); i++) {
+            Error.validateJsonElement(jsonArrayerrors.get(i));
+          };
+        }
+      }
+      if ((jsonObj.get("comment") != null && !jsonObj.get("comment").isJsonNull()) && !jsonObj.get("comment").isJsonPrimitive()) {
+        throw new IllegalArgumentException(String.format("Expected the field `comment` to be a primitive type in the JSON string but got `%s`", jsonObj.get("comment").toString()));
+      }
+  }
+
+  public static class CustomTypeAdapterFactory implements TypeAdapterFactory {
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
+       if (!Page.class.isAssignableFrom(type.getRawType())) {
+         return null; // this class only serializes 'Page' and its subtypes
+       }
+       final TypeAdapter<JsonElement> elementAdapter = gson.getAdapter(JsonElement.class);
+       final TypeAdapter<Page> thisAdapter
+                        = gson.getDelegateAdapter(this, TypeToken.get(Page.class));
+
+       return (TypeAdapter<T>) new TypeAdapter<Page>() {
+           @Override
+           public void write(JsonWriter out, Page value) throws IOException {
+             JsonObject obj = thisAdapter.toJsonTree(value).getAsJsonObject();
+             obj.remove("additionalProperties");
+             // serialize additional properties
+             if (value.getAdditionalProperties() != null) {
+               for (Map.Entry<String, Object> entry : value.getAdditionalProperties().entrySet()) {
+                 if (entry.getValue() instanceof String)
+                   obj.addProperty(entry.getKey(), (String) entry.getValue());
+                 else if (entry.getValue() instanceof Number)
+                   obj.addProperty(entry.getKey(), (Number) entry.getValue());
+                 else if (entry.getValue() instanceof Boolean)
+                   obj.addProperty(entry.getKey(), (Boolean) entry.getValue());
+                 else if (entry.getValue() instanceof Character)
+                   obj.addProperty(entry.getKey(), (Character) entry.getValue());
+                 else {
+                   obj.add(entry.getKey(), gson.toJsonTree(entry.getValue()).getAsJsonObject());
+                 }
+               }
+             }
+             elementAdapter.write(out, obj);
+           }
+
+           @Override
+           public Page read(JsonReader in) throws IOException {
+             JsonElement jsonElement = elementAdapter.read(in);
+             validateJsonElement(jsonElement);
+             JsonObject jsonObj = jsonElement.getAsJsonObject();
+             // store additional fields in the deserialized instance
+             Page instance = thisAdapter.fromJsonTree(jsonObj);
+             for (Map.Entry<String, JsonElement> entry : jsonObj.entrySet()) {
+               if (!openapiFields.contains(entry.getKey())) {
+                 if (entry.getValue().isJsonPrimitive()) { // primitive type
+                   if (entry.getValue().getAsJsonPrimitive().isString())
+                     instance.putAdditionalProperty(entry.getKey(), entry.getValue().getAsString());
+                   else if (entry.getValue().getAsJsonPrimitive().isNumber())
+                     instance.putAdditionalProperty(entry.getKey(), entry.getValue().getAsNumber());
+                   else if (entry.getValue().getAsJsonPrimitive().isBoolean())
+                     instance.putAdditionalProperty(entry.getKey(), entry.getValue().getAsBoolean());
+                   else
+                     throw new IllegalArgumentException(String.format("The field `%s` has unknown primitive type. Value: %s", entry.getKey(), entry.getValue().toString()));
+                 } else if (entry.getValue().isJsonArray()) {
+                     instance.putAdditionalProperty(entry.getKey(), gson.fromJson(entry.getValue(), List.class));
+                 } else { // JSON object
+                     instance.putAdditionalProperty(entry.getKey(), gson.fromJson(entry.getValue(), HashMap.class));
+                 }
+               }
+             }
+             return instance;
+           }
+
+       }.nullSafe();
+    }
+  }
+
+ /**
+  * Create an instance of Page given an JSON string
+  *
+  * @param jsonString JSON string
+  * @return An instance of Page
+  * @throws IOException if the JSON string is invalid with respect to Page
+  */
+  public static Page fromJson(String jsonString) throws IOException {
+    return JSON.getGson().fromJson(jsonString, Page.class);
+  }
+
+ /**
+  * Convert an instance of Page to an JSON string
+  *
+  * @return JSON string
+  */
+  public String toJson() {
+    return JSON.getGson().toJson(this);
+  }
 }
 

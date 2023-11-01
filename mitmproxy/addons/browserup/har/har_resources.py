@@ -3,6 +3,8 @@ import os
 import glob
 import json
 import falcon
+import logging
+
 from mitmproxy.addons.browserup.har.har_verifications import HarVerifications
 from mitmproxy.addons.browserup.har.har_capture_types import HarCaptureTypes
 
@@ -37,7 +39,7 @@ class RespondWithHarMixin:
     def respond_with_har(self, resp, har, har_file):
         resp.status = falcon.HTTP_200
         resp.content_type = falcon.MEDIA_JSON
-        resp.body = json.dumps(har, ensure_ascii=False)
+        resp.text = json.dumps(har, ensure_ascii=False)
 
 
 class ValidateMatchCriteriaMixin:
@@ -47,21 +49,21 @@ class ValidateMatchCriteriaMixin:
             MatchCriteriaSchema().load(criteria)
         except ValidationError as err:
             resp.content_type = falcon.MEDIA_JSON
-            raise falcon.HTTPError(falcon.HTTP_422, json.dumps({'error': err.messages}, ensure_ascii=False))
+            raise falcon.HTTPError(falcon.HTTP_422, description=json.dumps({'error': err.messages}, ensure_ascii=False))
 
 
 class VerifyResponseMixin:
     def respond_with_bool(self, resp, bool):
         resp.status = falcon.HTTP_200
         resp.content_type = falcon.MEDIA_JSON
-        resp.body = json.dumps({"result": bool}, ensure_ascii=False)
+        resp.text = json.dumps({"result": bool}, ensure_ascii=False)
 
 
 class NoEntriesResponseMixin:
     def respond_with_no_entries_error(self, resp, bool):
         resp.status = falcon.HTTP_500
         resp.content_type = falcon.MEDIA_JSON
-        resp.body = json.dumps({"error": 'No traffic entries are present! Is the proxy setup correctly?', }, ensure_ascii=False)
+        resp.text = json.dumps({"error": 'No traffic entries are present! Is the proxy setup correctly?', }, ensure_ascii=False)
 
 
 class HarResource(RespondWithHarMixin):
@@ -100,12 +102,20 @@ class HarResource(RespondWithHarMixin):
         clean_har = req.get_param('cleanHar') == 'true'
         har = self.HarCaptureAddon.get_har(clean_har)
 
-        filtered_har = self.HarCaptureAddon.filter_har_for_report(har)
-        har_file = self.HarCaptureAddon.save_har(filtered_har)
-
         if clean_har:
-            self.HarCaptureAddon.mark_har_entries_submitted(har)
-        self.respond_with_har(resp, har, har_file)
+            filtered_har = self.HarCaptureAddon.create_filtered_har_and_track_submitted(report_last_page = True,
+                                                                                        include_websockets = True,
+                                                                                        include_videos = True)
+        else:
+            filtered_har = self.HarCaptureAddon.create_filtered_har_and_track_submitted(report_last_page = False,
+                                                                                        include_websockets = False,
+                                                                                        include_videos = False)
+
+        old_har_file = self.HarCaptureAddon.save_har(filtered_har)
+        if clean_har:
+            self.HarCaptureAddon.reset_har_and_return_old_har()
+
+        self.respond_with_har(resp, har, old_har_file)
 
     def on_put(self, req, resp):
         """Starts or resets the Har capture session, returns the last session.
@@ -122,15 +132,12 @@ class HarResource(RespondWithHarMixin):
                 schema:
                   $ref: "#/components/schemas/Har"
         """
-        page_title = req.get_param('title')
-
-        har = self.HarCaptureAddon.new_har(page_title)
+        har = self.HarCaptureAddon.reset_har_and_return_old_har()
         har_file = self.HarCaptureAddon.save_har(har)
         self.respond_with_har(resp, har, har_file)
 
 
 class HarPageResource(RespondWithHarMixin):
-
     def __init__(self, HarCaptureAddon):
         self.HarCaptureAddon = HarCaptureAddon
 
@@ -203,13 +210,48 @@ class HarCaptureTypesResource():
 
             if not hasattr(HarCaptureTypes, ct):
                 resp.status = falcon.HTTP_400
-                resp.body = "Invalid HAR Capture type"
+                resp.text = "Invalid HAR Capture type"
                 return
 
             capture_types_parsed.append(HarCaptureTypes[ct])
 
         self.HarCaptureAddon.har_capture_types = capture_types_parsed
         resp.status = falcon.HTTP_200
+
+# decorates har with _page_timings gathered from injected JS script
+
+
+class PageTimingsResource():
+    def __init__(self, HarCaptureAddon):
+        self.name = "harcapture"
+        self.HarCaptureAddon = HarCaptureAddon
+
+    def addon_path(self):
+        return "har/page_timings"
+
+    def apispec(self, spec):
+        return
+
+    # This is a standard form post style, which we expect from navigator.sendbeacon.
+    # By accepting regular form posts, rather than application/json, we get out of some
+    # CORS headaches.
+    def on_post(self, req, resp):
+        logging.debug('Page timings resource post')
+        try:
+            form = req.get_media()
+            page_timings = {}
+            for part in form:
+                page_timings = json.loads(part.text)
+            self.HarCaptureAddon.add_page_info_to_har(page_timings)
+        except ValidationError as err:
+            logging.debug('Page timings validation error')
+            logging.debug(json.dumps({'Page timings error': err.messages}))
+            resp.status = falcon.HTTP_422
+            resp.content_type = falcon.MEDIA_JSON
+            resp.text = json.dumps({'error': err.messages}, ensure_ascii=False)
+        else:
+            logging.debug('Page timings returning 204')
+            resp.status = falcon.HTTP_204
 
 
 class PresentResource(VerifyResponseMixin, NoEntriesResponseMixin, ValidateMatchCriteriaMixin):
@@ -485,7 +527,7 @@ class CounterResource():
         except ValidationError as err:
             resp.status = falcon.HTTP_422
             resp.content_type = falcon.MEDIA_JSON
-            resp.body = json.dumps({'error': err.messages}, ensure_ascii=False)
+            resp.text = json.dumps({'error': err.messages}, ensure_ascii=False)
         else:
             resp.status = falcon.HTTP_204
 
@@ -528,6 +570,6 @@ class ErrorResource():
         except ValidationError as err:
             resp.status = falcon.HTTP_422
             resp.content_type = falcon.MEDIA_JSON
-            resp.body = json.dumps({'error': err.messages}, ensure_ascii=False)
+            resp.text = json.dumps({'error': err.messages}, ensure_ascii=False)
         else:
             resp.status = falcon.HTTP_204

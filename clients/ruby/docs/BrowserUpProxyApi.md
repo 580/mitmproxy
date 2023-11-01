@@ -1,6 +1,6 @@
 # BrowserupMitmProxy::BrowserUpProxyApi
 
-All URIs are relative to *http://localhost:8088*
+All URIs are relative to *http://localhost:48088*
 
 | Method | HTTP request | Description |
 | ------ | ------------ | ----------- |
@@ -31,7 +31,7 @@ require 'time'
 require 'browserup_mitmproxy_client'
 
 api_instance = BrowserupMitmProxy::BrowserUpProxyApi.new
-counter = BrowserupMitmProxy::Counter.new({value: 3.56, name: 'name_example'}) # Counter | Receives a new counter to add. The counter is stored, under the hood, in an array in the har under the _counters key
+counter = BrowserupMitmProxy::Counter.new # Counter | Receives a new counter to add. The counter is stored, under the hood, in an array in the har under the _counters key
 
 begin
   

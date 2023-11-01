@@ -34,18 +34,16 @@ Suggested Exploit: <script>alert(0)</script>
 Line: 1029zxcs'd"ao<ac>so[sb]po(pc)se;sl/bsl\eq=3847asd
 
 """
-
-from html.parser import HTMLParser
-from typing import Dict, Union, Tuple, Optional, List, NamedTuple
-from urllib.parse import urlparse
+import logging
 import re
 import socket
+from html.parser import HTMLParser
+from typing import NamedTuple, Optional, Union
+from urllib.parse import urlparse
 
 import requests
 
 from mitmproxy import http
-from mitmproxy import ctx
-
 
 # The actual payload is put between a frontWall and a backWall to make it easy
 # to locate the payload with regular expressions
@@ -79,8 +77,8 @@ class SQLiData(NamedTuple):
     dbms: str
 
 
-VulnData = Tuple[Optional[XSSData], Optional[SQLiData]]
-Cookies = Dict[str, str]
+VulnData = tuple[Optional[XSSData], Optional[SQLiData]]
+Cookies = dict[str, str]
 
 
 def get_cookies(flow: http.HTTPFlow) -> Cookies:
@@ -92,14 +90,15 @@ def get_cookies(flow: http.HTTPFlow) -> Cookies:
 
 def find_unclaimed_URLs(body, requestUrl):
     """ Look for unclaimed URLs in script tags and log them if found"""
-    def getValue(attrs: List[Tuple[str, str]], attrName: str) -> Optional[str]:
+
+    def getValue(attrs: list[tuple[str, str]], attrName: str) -> Optional[str]:
         for name, value in attrs:
             if attrName == name:
                 return value
         return None
 
     class ScriptURLExtractor(HTMLParser):
-        script_URLs: List[str] = []
+        script_URLs: list[str] = []
 
         def handle_starttag(self, tag, attrs):
             if (tag == "script" or tag == "iframe") and "src" in [name for name, value in attrs]:
@@ -115,7 +114,7 @@ def find_unclaimed_URLs(body, requestUrl):
         try:
             socket.gethostbyname(domain)
         except socket.gaierror:
-            ctx.log.error(f"XSS found in {requestUrl} due to unclaimed URL \"{url}\".")
+            logging.error(f"XSS found in {requestUrl} due to unclaimed URL \"{url}\".")
 
 
 def test_end_of_URL_injection(original_body: str, request_URL: str, cookies: Cookies) -> VulnData:
@@ -171,22 +170,22 @@ def log_XSS_data(xss_info: Optional[XSSData]) -> None:
     # If it is None, then there is no info to log
     if not xss_info:
         return
-    ctx.log.error("===== XSS Found ====")
-    ctx.log.error("XSS URL: %s" % xss_info.url)
-    ctx.log.error("Injection Point: %s" % xss_info.injection_point)
-    ctx.log.error("Suggested Exploit: %s" % xss_info.exploit)
-    ctx.log.error("Line: %s" % xss_info.line)
+    logging.error("===== XSS Found ====")
+    logging.error("XSS URL: %s" % xss_info.url)
+    logging.error("Injection Point: %s" % xss_info.injection_point)
+    logging.error("Suggested Exploit: %s" % xss_info.exploit)
+    logging.error("Line: %s" % xss_info.line)
 
 
 def log_SQLi_data(sqli_info: Optional[SQLiData]) -> None:
     """ Log information about the given SQLi to mitmproxy """
     if not sqli_info:
         return
-    ctx.log.error("===== SQLi Found =====")
-    ctx.log.error("SQLi URL: %s" % sqli_info.url)
-    ctx.log.error("Injection Point: %s" % sqli_info.injection_point)
-    ctx.log.error("Regex used: %s" % sqli_info.regex)
-    ctx.log.error("Suspected DBMS: %s" % sqli_info.dbms)
+    logging.error("===== SQLi Found =====")
+    logging.error("SQLi URL: %s" % sqli_info.url)
+    logging.error("Injection Point: %s" % sqli_info.injection_point)
+    logging.error("Regex used: %s" % sqli_info.regex)
+    logging.error("Suspected DBMS: %s" % sqli_info.dbms)
     return
 
 
@@ -245,7 +244,7 @@ def inside_quote(qc: str, substring_bytes: bytes, text_index: int, body_bytes: b
     return False
 
 
-def paths_to_text(html: str, string: str) -> List[str]:
+def paths_to_text(html: str, string: str) -> list[str]:
     """ Return list of Paths to a given str in the given HTML tree
           - Note that it does a BFS """
 
@@ -258,7 +257,7 @@ def paths_to_text(html: str, string: str) -> List[str]:
 
     class PathHTMLParser(HTMLParser):
         currentPath = ""
-        paths: List[str] = []
+        paths: list[str] = []
 
         def handle_starttag(self, tag, attrs):
             self.currentPath += ("/" + tag)
@@ -277,6 +276,7 @@ def paths_to_text(html: str, string: str) -> List[str]:
 
 def get_XSS_data(body: Union[str, bytes], request_URL: str, injection_point: str) -> Optional[XSSData]:
     """ Return a XSSDict if there is a XSS otherwise return None """
+
     def in_script(text, index, body) -> bool:
         """ Whether the Numberth occurrence of the first string in the second
             string is inside a script tag """
@@ -302,6 +302,7 @@ def get_XSS_data(body: Union[str, bytes], request_URL: str, injection_point: str
 
     def inject_javascript_handler(html: str) -> bool:
         """ Whether you can inject a Javascript:alert(0) as a link """
+
         class injectJSHandlerHTMLParser(HTMLParser):
             injectJSHandler = False
 
@@ -313,6 +314,7 @@ def get_XSS_data(body: Union[str, bytes], request_URL: str, injection_point: str
         parser = injectJSHandlerHTMLParser()
         parser.feed(html)
         return parser.injectJSHandler
+
     # Only convert the body to bytes if needed
     if isinstance(body, str):
         body = bytes(body, 'utf-8')

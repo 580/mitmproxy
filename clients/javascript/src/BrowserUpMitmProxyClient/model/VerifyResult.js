@@ -22,13 +22,10 @@ class VerifyResult {
     /**
      * Constructs a new <code>VerifyResult</code>.
      * @alias module:BrowserUpMitmProxyClient/model/VerifyResult
-     * @param type {String} Type
-     * @param name {String} Name
-     * @param result {Boolean} Result True / False
      */
-    constructor(type, name, result) { 
+    constructor() { 
         
-        VerifyResult.initialize(this, type, name, result);
+        VerifyResult.initialize(this);
     }
 
     /**
@@ -36,10 +33,7 @@ class VerifyResult {
      * This method is used by the constructors of any subclasses, in order to implement multiple inheritance (mix-ins).
      * Only for internal use.
      */
-    static initialize(obj, type, name, result) { 
-        obj['type'] = type;
-        obj['name'] = name;
-        obj['result'] = result;
+    static initialize(obj) { 
     }
 
     /**
@@ -66,8 +60,28 @@ class VerifyResult {
         return obj;
     }
 
+    /**
+     * Validates the JSON data with respect to <code>VerifyResult</code>.
+     * @param {Object} data The plain JavaScript object bearing properties of interest.
+     * @return {boolean} to indicate whether the JSON data is valid with respect to <code>VerifyResult</code>.
+     */
+    static validateJSON(data) {
+        // ensure the json data is a string
+        if (data['type'] && !(typeof data['type'] === 'string' || data['type'] instanceof String)) {
+            throw new Error("Expected the field `type` to be a primitive type in the JSON string but got " + data['type']);
+        }
+        // ensure the json data is a string
+        if (data['name'] && !(typeof data['name'] === 'string' || data['name'] instanceof String)) {
+            throw new Error("Expected the field `name` to be a primitive type in the JSON string but got " + data['name']);
+        }
+
+        return true;
+    }
+
 
 }
+
+
 
 /**
  * Type

@@ -62,7 +62,7 @@ Please follow the [installation](#installation) procedure and then run the follo
 require 'browserup_mitmproxy_client'
 
 api_instance = BrowserupMitmProxy::BrowserUpProxyApi.new
-counter = BrowserupMitmProxy::Counter.new({value: 3.56, name: 'name_example'}) # Counter | Receives a new counter to add. The counter is stored, under the hood, in an array in the har under the _counters key
+counter = BrowserupMitmProxy::Counter.new # Counter | Receives a new counter to add. The counter is stored, under the hood, in an array in the har under the _counters key
 
 begin
   api_instance.add_counter(counter)
@@ -74,7 +74,7 @@ end
 
 ## Documentation for API Endpoints
 
-All URIs are relative to *http://localhost:8088*
+All URIs are relative to *http://localhost:48088*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
@@ -92,28 +92,35 @@ Class | Method | HTTP request | Description
 
 ## Documentation for Models
 
+ - [BrowserupMitmProxy::Action](docs/Action.md)
  - [BrowserupMitmProxy::Counter](docs/Counter.md)
- - [BrowserupMitmProxy::Entry](docs/Entry.md)
- - [BrowserupMitmProxy::EntryRequest](docs/EntryRequest.md)
- - [BrowserupMitmProxy::EntryRequestCookies](docs/EntryRequestCookies.md)
- - [BrowserupMitmProxy::EntryRequestQueryString](docs/EntryRequestQueryString.md)
- - [BrowserupMitmProxy::EntryResponse](docs/EntryResponse.md)
- - [BrowserupMitmProxy::EntryResponseContent](docs/EntryResponseContent.md)
- - [BrowserupMitmProxy::EntryTimings](docs/EntryTimings.md)
  - [BrowserupMitmProxy::Error](docs/Error.md)
  - [BrowserupMitmProxy::Har](docs/Har.md)
+ - [BrowserupMitmProxy::HarEntry](docs/HarEntry.md)
+ - [BrowserupMitmProxy::HarEntryCache](docs/HarEntryCache.md)
+ - [BrowserupMitmProxy::HarEntryCacheBeforeRequest](docs/HarEntryCacheBeforeRequest.md)
+ - [BrowserupMitmProxy::HarEntryRequest](docs/HarEntryRequest.md)
+ - [BrowserupMitmProxy::HarEntryRequestCookiesInner](docs/HarEntryRequestCookiesInner.md)
+ - [BrowserupMitmProxy::HarEntryRequestPostData](docs/HarEntryRequestPostData.md)
+ - [BrowserupMitmProxy::HarEntryRequestPostDataParamsInner](docs/HarEntryRequestPostDataParamsInner.md)
+ - [BrowserupMitmProxy::HarEntryRequestQueryStringInner](docs/HarEntryRequestQueryStringInner.md)
+ - [BrowserupMitmProxy::HarEntryResponse](docs/HarEntryResponse.md)
+ - [BrowserupMitmProxy::HarEntryResponseContent](docs/HarEntryResponseContent.md)
+ - [BrowserupMitmProxy::HarEntryTimings](docs/HarEntryTimings.md)
  - [BrowserupMitmProxy::HarLog](docs/HarLog.md)
  - [BrowserupMitmProxy::HarLogCreator](docs/HarLogCreator.md)
  - [BrowserupMitmProxy::Header](docs/Header.md)
+ - [BrowserupMitmProxy::LargestContentfulPaint](docs/LargestContentfulPaint.md)
  - [BrowserupMitmProxy::MatchCriteria](docs/MatchCriteria.md)
  - [BrowserupMitmProxy::NameValuePair](docs/NameValuePair.md)
  - [BrowserupMitmProxy::Page](docs/Page.md)
- - [BrowserupMitmProxy::PagePageTimings](docs/PagePageTimings.md)
+ - [BrowserupMitmProxy::PageTiming](docs/PageTiming.md)
+ - [BrowserupMitmProxy::PageTimings](docs/PageTimings.md)
  - [BrowserupMitmProxy::VerifyResult](docs/VerifyResult.md)
  - [BrowserupMitmProxy::WebSocketMessage](docs/WebSocketMessage.md)
 
 
 ## Documentation for Authorization
 
- All endpoints do not require authorization.
+Endpoints do not require authorization.
 

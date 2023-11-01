@@ -1,9 +1,11 @@
 from datetime import datetime
 from datetime import timezone
 
+DEFAULT_PAGE_TITLE = "Default"
+DEFAULT_PAGE_REF = "page_1"
+
 
 class HarBuilder():
-    # Default templates for building har chunks as dictionaries
 
     @staticmethod
     def har():
@@ -21,23 +23,23 @@ class HarBuilder():
                 "comment": ""
             },
             "entries": [],
-            "pages": []
+            "pages": [HarBuilder.page(id=DEFAULT_PAGE_REF)]
         }
 
     @staticmethod
     def page_timings():
         return {
-            "onContentLoad": 0,
-            "onLoad": 0,
+            "onContentLoad": -1,
+            "onLoad": -1,
             "comment": ""
         }
 
     @staticmethod
-    def page(title="", id="", started_date_time=str(datetime.now(tz=timezone.utc).isoformat())):
+    def page(id=DEFAULT_PAGE_REF, title=DEFAULT_PAGE_TITLE):
         return {
             "title": title,
             "id": id,
-            "startedDateTime": started_date_time,
+            "startedDateTime": str(datetime.now(tz=timezone.utc).isoformat()),
             "pageTimings": HarBuilder.page_timings()
         }
 
@@ -61,8 +63,7 @@ class HarBuilder():
             "queryString": [],
             "headersSize": 0,
             "bodySize": 0,
-            "comment": "",
-            "additional": {}
+            "comment": ""
         }
 
     @staticmethod
@@ -82,7 +83,7 @@ class HarBuilder():
         return {
             "status": 0,
             "statusText": "",
-            "httpVersion": "",
+            "httpVersion": "unknown",
             "cookies": [],
             "headers": [],
             "content": {
@@ -96,7 +97,7 @@ class HarBuilder():
             "redirectURL": "",
             "headersSize": -1,
             "bodySize": -1,
-            "comment": 0,
+            "comment": "",
         }
 
     @staticmethod
@@ -109,13 +110,13 @@ class HarBuilder():
         return result
 
     @staticmethod
-    def entry():
+    def entry(pageref = DEFAULT_PAGE_REF):
         return {
-            "pageref": "",
-            "startedDateTime": "",
+            "pageref": pageref,
+            "startedDateTime": str(datetime.now(tz=timezone.utc).isoformat()),
             "time": 0,
-            "request": {},
-            "response": {},
+            "request": HarBuilder.entry_request(),
+            "response": HarBuilder.entry_response(),
             "_webSocketMessages": [],
             "cache": {},
             "timings": HarBuilder.entry_timings(),
