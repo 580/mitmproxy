@@ -8,6 +8,14 @@ exports[`FlowView 1`] = `
     <nav
       class="nav-tabs nav-tabs-sm"
     >
+      <button
+        class="close-button"
+        data-testid="close-button-id"
+      >
+        <i
+          class="fa fa-times-circle"
+        />
+      </button>
       <a
         class="active"
         href="#"
@@ -43,6 +51,12 @@ exports[`FlowView 1`] = `
         href="#"
       >
         Timing
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Comment
       </a>
     </nav>
     <section
@@ -186,6 +200,14 @@ exports[`FlowView 2`] = `
     <nav
       class="nav-tabs nav-tabs-sm"
     >
+      <button
+        class="close-button"
+        data-testid="close-button-id"
+      >
+        <i
+          class="fa fa-times-circle"
+        />
+      </button>
       <a
         class=""
         href="#"
@@ -221,6 +243,12 @@ exports[`FlowView 2`] = `
         href="#"
       >
         Timing
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Comment
       </a>
     </nav>
     <section
@@ -362,6 +390,14 @@ exports[`FlowView 3`] = `
     <nav
       class="nav-tabs nav-tabs-sm"
     >
+      <button
+        class="close-button"
+        data-testid="close-button-id"
+      >
+        <i
+          class="fa fa-times-circle"
+        />
+      </button>
       <a
         class=""
         href="#"
@@ -397,6 +433,12 @@ exports[`FlowView 3`] = `
         href="#"
       >
         Timing
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Comment
       </a>
     </nav>
     <section
@@ -458,6 +500,14 @@ exports[`FlowView 4`] = `
     <nav
       class="nav-tabs nav-tabs-sm"
     >
+      <button
+        class="close-button"
+        data-testid="close-button-id"
+      >
+        <i
+          class="fa fa-times-circle"
+        />
+      </button>
       <a
         class=""
         href="#"
@@ -493,6 +543,12 @@ exports[`FlowView 4`] = `
         href="#"
       >
         Timing
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Comment
       </a>
     </nav>
     <section
@@ -739,6 +795,14 @@ exports[`FlowView 5`] = `
     <nav
       class="nav-tabs nav-tabs-sm"
     >
+      <button
+        class="close-button"
+        data-testid="close-button-id"
+      >
+        <i
+          class="fa fa-times-circle"
+        />
+      </button>
       <a
         class=""
         href="#"
@@ -774,6 +838,12 @@ exports[`FlowView 5`] = `
         href="#"
       >
         Timing
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Comment
       </a>
     </nav>
     <section
@@ -939,6 +1009,91 @@ exports[`FlowView 6`] = `
     <nav
       class="nav-tabs nav-tabs-sm"
     >
+      <button
+        class="close-button"
+        data-testid="close-button-id"
+      >
+        <i
+          class="fa fa-times-circle"
+        />
+      </button>
+      <a
+        class=""
+        href="#"
+      >
+        Request
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Response
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        WebSocket
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Error
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Connection
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Timing
+      </a>
+      <a
+        class="active"
+        href="#"
+      >
+        Comment
+      </a>
+    </nav>
+    <section
+      class="timing"
+    >
+      <h4>
+        Comment
+      </h4>
+      <span
+        class="inline-input kv-value"
+        placeholder="empty"
+        tabindex="0"
+      >
+        I'm a comment!
+      </span>
+    </section>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`FlowView 7`] = `
+<DocumentFragment>
+  <div
+    class="flow-detail"
+  >
+    <nav
+      class="nav-tabs nav-tabs-sm"
+    >
+      <button
+        class="close-button"
+        data-testid="close-button-id"
+      >
+        <i
+          class="fa fa-times-circle"
+        />
+      </button>
       <a
         class=""
         href="#"
@@ -975,6 +1130,12 @@ exports[`FlowView 6`] = `
       >
         Timing
       </a>
+      <a
+        class=""
+        href="#"
+      >
+        Comment
+      </a>
     </nav>
     <section
       class="error"
@@ -994,7 +1155,7 @@ exports[`FlowView 6`] = `
 </DocumentFragment>
 `;
 
-exports[`FlowView 7`] = `
+exports[`FlowView 8`] = `
 <DocumentFragment>
   <div
     class="flow-detail"
@@ -1002,11 +1163,19 @@ exports[`FlowView 7`] = `
     <nav
       class="nav-tabs nav-tabs-sm"
     >
+      <button
+        class="close-button"
+        data-testid="close-button-id"
+      >
+        <i
+          class="fa fa-times-circle"
+        />
+      </button>
       <a
         class="active"
         href="#"
       >
-        TCP Messages
+        Stream Data
       </a>
       <a
         class=""
@@ -1026,13 +1195,16 @@ exports[`FlowView 7`] = `
       >
         Timing
       </a>
+      <a
+        class=""
+        href="#"
+      >
+        Comment
+      </a>
     </nav>
     <section
       class="tcp"
     >
-      <h4>
-        TCP Data
-      </h4>
       <div
         class="contentview"
       >
@@ -1060,6 +1232,575 @@ exports[`FlowView 7`] = `
               />
             </span>
           </a>
+        </div>
+      </div>
+    </section>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`FlowView 9`] = `
+<DocumentFragment>
+  <div
+    class="flow-detail"
+  >
+    <nav
+      class="nav-tabs nav-tabs-sm"
+    >
+      <button
+        class="close-button"
+        data-testid="close-button-id"
+      >
+        <i
+          class="fa fa-times-circle"
+        />
+      </button>
+      <a
+        class=""
+        href="#"
+      >
+        Stream Data
+      </a>
+      <a
+        class="active"
+        href="#"
+      >
+        Error
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Connection
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Timing
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Comment
+      </a>
+    </nav>
+    <section
+      class="error"
+    >
+      <div
+        class="alert alert-warning"
+      >
+        error
+        <div>
+          <small>
+            1999-12-31 23:00:07.000
+          </small>
+        </div>
+      </div>
+    </section>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`FlowView 10`] = `
+<DocumentFragment>
+  <div
+    class="flow-detail"
+  >
+    <nav
+      class="nav-tabs nav-tabs-sm"
+    >
+      <button
+        class="close-button"
+        data-testid="close-button-id"
+      >
+        <i
+          class="fa fa-times-circle"
+        />
+      </button>
+      <a
+        class="active"
+        href="#"
+      >
+        Request
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Response
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Error
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Connection
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Timing
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Comment
+      </a>
+    </nav>
+    <section
+      class="dns-request"
+    >
+      <div
+        class="first-line request-line"
+      >
+        <div>
+          QUERY 
+        </div>
+      </div>
+      <h5>
+        Recursive Question
+      </h5>
+      <table>
+        <thead>
+          <tr>
+            <th>
+              Name
+            </th>
+            <th>
+              Type
+            </th>
+            <th>
+              Class
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              dns.google
+            </td>
+            <td>
+              A
+            </td>
+            <td>
+              IN
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <hr />
+      <h5>
+        Answer
+      </h5>
+      —
+      <hr />
+      <h5>
+        Authority
+      </h5>
+      —
+      <hr />
+      <h5>
+        Additional
+      </h5>
+      —
+    </section>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`FlowView 11`] = `
+<DocumentFragment>
+  <div
+    class="flow-detail"
+  >
+    <nav
+      class="nav-tabs nav-tabs-sm"
+    >
+      <button
+        class="close-button"
+        data-testid="close-button-id"
+      >
+        <i
+          class="fa fa-times-circle"
+        />
+      </button>
+      <a
+        class=""
+        href="#"
+      >
+        Request
+      </a>
+      <a
+        class="active"
+        href="#"
+      >
+        Response
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Error
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Connection
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Timing
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Comment
+      </a>
+    </nav>
+    <section
+      class="dns-response"
+    >
+      <div
+        class="first-line response-line"
+      >
+        <div>
+          NOERROR 
+        </div>
+      </div>
+      <h5>
+        Recursive Question
+      </h5>
+      <table>
+        <thead>
+          <tr>
+            <th>
+              Name
+            </th>
+            <th>
+              Type
+            </th>
+            <th>
+              Class
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              dns.google
+            </td>
+            <td>
+              A
+            </td>
+            <td>
+              IN
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <hr />
+      <h5>
+        Recursive Answer
+      </h5>
+      <table>
+        <thead>
+          <tr>
+            <th>
+              Name
+            </th>
+            <th>
+              Type
+            </th>
+            <th>
+              Class
+            </th>
+            <th>
+              TTL
+            </th>
+            <th>
+              Data
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              dns.google
+            </td>
+            <td>
+              A
+            </td>
+            <td>
+              IN
+            </td>
+            <td>
+              32
+            </td>
+            <td>
+              8.8.8.8
+            </td>
+          </tr>
+          <tr>
+            <td>
+              dns.google
+            </td>
+            <td>
+              A
+            </td>
+            <td>
+              IN
+            </td>
+            <td>
+              32
+            </td>
+            <td>
+              8.8.4.4
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <hr />
+      <h5>
+        Authority
+      </h5>
+      —
+      <hr />
+      <h5>
+        Additional
+      </h5>
+      —
+    </section>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`FlowView 12`] = `
+<DocumentFragment>
+  <div
+    class="flow-detail"
+  >
+    <nav
+      class="nav-tabs nav-tabs-sm"
+    >
+      <button
+        class="close-button"
+        data-testid="close-button-id"
+      >
+        <i
+          class="fa fa-times-circle"
+        />
+      </button>
+      <a
+        class=""
+        href="#"
+      >
+        Request
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Response
+      </a>
+      <a
+        class="active"
+        href="#"
+      >
+        Error
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Connection
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Timing
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Comment
+      </a>
+    </nav>
+    <section
+      class="error"
+    >
+      <div
+        class="alert alert-warning"
+      >
+        error
+        <div>
+          <small>
+            1999-12-31 23:00:07.000
+          </small>
+        </div>
+      </div>
+    </section>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`FlowView 13`] = `
+<DocumentFragment>
+  <div
+    class="flow-detail"
+  >
+    <nav
+      class="nav-tabs nav-tabs-sm"
+    >
+      <button
+        class="close-button"
+        data-testid="close-button-id"
+      >
+        <i
+          class="fa fa-times-circle"
+        />
+      </button>
+      <a
+        class="active"
+        href="#"
+      >
+        Datagrams
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Error
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Connection
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Timing
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Comment
+      </a>
+    </nav>
+    <section
+      class="udp"
+    >
+      <div
+        class="contentview"
+      >
+        <div
+          class="controls"
+        >
+          <h5>
+            2 Messages
+          </h5>
+          <a
+            class="btn btn-default btn-xs"
+            href="#"
+          >
+            <span>
+              <i
+                class="fa fa-fw fa-files-o"
+              />
+               
+              <b>
+                View:
+              </b>
+               auto 
+              <span
+                class="caret"
+              />
+            </span>
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`FlowView 14`] = `
+<DocumentFragment>
+  <div
+    class="flow-detail"
+  >
+    <nav
+      class="nav-tabs nav-tabs-sm"
+    >
+      <button
+        class="close-button"
+        data-testid="close-button-id"
+      >
+        <i
+          class="fa fa-times-circle"
+        />
+      </button>
+      <a
+        class=""
+        href="#"
+      >
+        Datagrams
+      </a>
+      <a
+        class="active"
+        href="#"
+      >
+        Error
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Connection
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Timing
+      </a>
+      <a
+        class=""
+        href="#"
+      >
+        Comment
+      </a>
+    </nav>
+    <section
+      class="error"
+    >
+      <div
+        class="alert alert-warning"
+      >
+        error
+        <div>
+          <small>
+            1999-12-31 23:00:07.000
+          </small>
         </div>
       </div>
     </section>

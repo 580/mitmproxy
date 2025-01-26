@@ -41,9 +41,10 @@ all other strings are returned as plain bytes.
 """
 
 import collections
-import typing
+from typing import BinaryIO
+from typing import Union
 
-TSerializable = typing.Union[None, str, bool, int, float, bytes, list, tuple, dict]
+TSerializable = Union[None, str, bool, int, float, bytes, list, tuple, dict]
 
 
 def dumps(value: TSerializable) -> bytes:
@@ -55,10 +56,10 @@ def dumps(value: TSerializable) -> bytes:
     #  than creating all the intermediate strings.
     q: collections.deque = collections.deque()
     _rdumpq(q, 0, value)
-    return b''.join(q)
+    return b"".join(q)
 
 
-def dump(value: TSerializable, file_handle: typing.IO[bytes]) -> None:
+def dump(value: TSerializable, file_handle: BinaryIO) -> None:
     """
     This function dumps a python object as a tnetstring and
     writes it to the given file.
@@ -84,19 +85,19 @@ def _rdumpq(q: collections.deque, size: int, value: TSerializable) -> int:
     """
     write = q.appendleft
     if value is None:
-        write(b'0:~')
+        write(b"0:~")
         return size + 3
     elif value is True:
-        write(b'4:true!')
+        write(b"4:true!")
         return size + 7
     elif value is False:
-        write(b'5:false!')
+        write(b"5:false!")
         return size + 8
     elif isinstance(value, int):
         data = str(value).encode()
         ldata = len(data)
         span = str(ldata).encode()
-        write(b'%s:%s#' % (span, data))
+        write(b"%s:%s#" % (span, data))
         return size + 2 + len(span) + ldata
     elif isinstance(value, float):
         #  Use repr() for float rather than str().
@@ -106,57 +107,57 @@ def _rdumpq(q: collections.deque, size: int, value: TSerializable) -> int:
         data = repr(value).encode()
         ldata = len(data)
         span = str(ldata).encode()
-        write(b'%s:%s^' % (span, data))
+        write(b"%s:%s^" % (span, data))
         return size + 2 + len(span) + ldata
     elif isinstance(value, bytes):
         data = value
         ldata = len(data)
         span = str(ldata).encode()
-        write(b',')
+        write(b",")
         write(data)
-        write(b':')
+        write(b":")
         write(span)
         return size + 2 + len(span) + ldata
     elif isinstance(value, str):
         data = value.encode("utf8")
         ldata = len(data)
         span = str(ldata).encode()
-        write(b';')
+        write(b";")
         write(data)
-        write(b':')
+        write(b":")
         write(span)
         return size + 2 + len(span) + ldata
     elif isinstance(value, (list, tuple)):
-        write(b']')
+        write(b"]")
         init_size = size = size + 1
         for item in reversed(value):
             size = _rdumpq(q, size, item)
         span = str(size - init_size).encode()
-        write(b':')
+        write(b":")
         write(span)
         return size + 1 + len(span)
     elif isinstance(value, dict):
-        write(b'}')
+        write(b"}")
         init_size = size = size + 1
-        for (k, v) in value.items():
+        for k, v in value.items():
             size = _rdumpq(q, size, v)
             size = _rdumpq(q, size, k)
         span = str(size - init_size).encode()
-        write(b':')
+        write(b":")
         write(span)
         return size + 1 + len(span)
     else:
-        raise ValueError("unserializable object: {} ({})".format(value, type(value)))
+        raise ValueError(f"unserializable object: {value} ({type(value)})")
 
 
 def loads(string: bytes) -> TSerializable:
     """
     This function parses a tnetstring into a python object.
     """
-    return pop(string)[0]
+    return pop(memoryview(string))[0]
 
 
-def load(file_handle: typing.IO[bytes]) -> TSerializable:
+def load(file_handle: BinaryIO) -> TSerializable:
     """load(file) -> object
 
     This function reads a tnetstring from a file and parses it into a
@@ -171,51 +172,51 @@ def load(file_handle: typing.IO[bytes]) -> TSerializable:
     data_length = b""
     while c.isdigit():
         data_length += c
-        if len(data_length) > 9:
+        if len(data_length) > 12:
             raise ValueError("not a tnetstring: absurdly large length prefix")
         c = file_handle.read(1)
     if c != b":":
         raise ValueError("not a tnetstring: missing or invalid length prefix")
 
-    data = file_handle.read(int(data_length))
+    data = memoryview(file_handle.read(int(data_length)))
     data_type = file_handle.read(1)[0]
 
     return parse(data_type, data)
 
 
-def parse(data_type: int, data: bytes) -> TSerializable:
-    if data_type == ord(b','):
-        return data
-    if data_type == ord(b';'):
-        return data.decode("utf8")
-    if data_type == ord(b'#'):
+def parse(data_type: int, data: memoryview) -> TSerializable:
+    if data_type == ord(b","):
+        return data.tobytes()
+    if data_type == ord(b";"):
+        return str(data, "utf8")
+    if data_type == ord(b"#"):
         try:
             return int(data)
         except ValueError:
             raise ValueError(f"not a tnetstring: invalid integer literal: {data!r}")
-    if data_type == ord(b'^'):
+    if data_type == ord(b"^"):
         try:
             return float(data)
         except ValueError:
             raise ValueError(f"not a tnetstring: invalid float literal: {data!r}")
-    if data_type == ord(b'!'):
-        if data == b'true':
+    if data_type == ord(b"!"):
+        if data == b"true":
             return True
-        elif data == b'false':
+        elif data == b"false":
             return False
         else:
             raise ValueError(f"not a tnetstring: invalid boolean literal: {data!r}")
-    if data_type == ord(b'~'):
+    if data_type == ord(b"~"):
         if data:
             raise ValueError(f"not a tnetstring: invalid null literal: {data!r}")
         return None
-    if data_type == ord(b']'):
-        l = []
+    if data_type == ord(b"]"):
+        lst = []
         while data:
             item, data = pop(data)
-            l.append(item)  # type: ignore
-        return l
-    if data_type == ord(b'}'):
+            lst.append(item)  # type: ignore
+        return lst
+    if data_type == ord(b"}"):
         d = {}
         while data:
             key, data = pop(data)
@@ -225,20 +226,30 @@ def parse(data_type: int, data: bytes) -> TSerializable:
     raise ValueError(f"unknown type tag: {data_type}")
 
 
-def pop(data: bytes) -> typing.Tuple[TSerializable, bytes]:
+def split(data: memoryview, sep: bytes) -> tuple[int, memoryview]:
+    i = 0
+    try:
+        ord_sep = ord(sep)
+        while data[i] != ord_sep:
+            i += 1
+        # here i is the position of b":" in the memoryview
+        return int(data[:i]), data[i + 1 :]
+    except (IndexError, ValueError):
+        raise ValueError(
+            f"not a tnetstring: missing or invalid length prefix: {data.tobytes()!r}"
+        )
+
+
+def pop(data: memoryview) -> tuple[TSerializable, memoryview]:
     """
     This function parses a tnetstring into a python object.
     It returns a tuple giving the parsed object and a string
     containing any unparsed data from the end of the string.
     """
-    #  Parse out data length, type and remaining string.
+    # Parse out data length, type and remaining string.
+    length, data = split(data, b":")
     try:
-        blength, data = data.split(b':', 1)
-        length = int(blength)
-    except ValueError:
-        raise ValueError(f"not a tnetstring: missing or invalid length prefix: {data!r}")
-    try:
-        data, data_type, remain = data[:length], data[length], data[length + 1:]
+        data, data_type, remain = data[:length], data[length], data[length + 1 :]
     except IndexError:
         #  This fires if len(data) < dlen, meaning we don't need
         #  to further validate that data is the right length.

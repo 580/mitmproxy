@@ -50,7 +50,7 @@
   describe('VerifyResult', function() {
     it('should create an instance of VerifyResult', function() {
       // uncomment below and update the code to test VerifyResult
-      //var instane = new BrowserUpMitmProxyClient.VerifyResult();
+      //var instance = new BrowserUpMitmProxyClient.VerifyResult();
       //expect(instance).to.be.a(BrowserUpMitmProxyClient.VerifyResult);
     });
 

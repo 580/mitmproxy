@@ -1,27 +1,24 @@
-import urwid
-import blinker
 import textwrap
+
+import urwid
 
 from mitmproxy import command
 from mitmproxy.tools.console import layoutwidget
 from mitmproxy.tools.console import signals
+from mitmproxy.utils import signals as utils_signals
 
 HELP_HEIGHT = 5
 
-command_focus_change = blinker.Signal()
+command_focus_change = utils_signals.SyncSignal(lambda text: None)
 
 
 class CommandItem(urwid.WidgetWrap):
     def __init__(self, walker, cmd: command.Command, focused: bool):
         self.walker, self.cmd, self.focused = walker, cmd, focused
-        super().__init__(None)
-        self._w = self.get_widget()
+        super().__init__(self.get_widget())
 
     def get_widget(self):
-        parts = [
-            ("focus", ">> " if self.focused else "   "),
-            ("title", self.cmd.name)
-        ]
+        parts = [("focus", ">> " if self.focused else "   "), ("title", self.cmd.name)]
         if self.cmd.parameters:
             parts += [
                 ("text", " "),
@@ -33,10 +30,7 @@ class CommandItem(urwid.WidgetWrap):
                 ("text", command.typename(self.cmd.return_type)),
             ]
 
-        return urwid.AttrMap(
-            urwid.Padding(urwid.Text(parts)),
-            "text"
-        )
+        return urwid.AttrMap(urwid.Padding(urwid.Text(parts)), "text")
 
     def get_edit_text(self):
         return self._w[1].get_edit_text()
@@ -69,7 +63,7 @@ class CommandListWalker(urwid.ListWalker):
     def get_focus(self):
         return self.focus_obj, self.index
 
-    def set_focus(self, index):
+    def set_focus(self, index: int) -> None:
         cmd = self.cmds[index]
         self.index = index
         self.focus_obj = self._get(self.index)
@@ -94,7 +88,7 @@ class CommandsList(urwid.ListBox):
         self.walker = CommandListWalker(master)
         super().__init__(self.walker)
 
-    def keypress(self, size, key):
+    def keypress(self, size: int, key: str):
         if key == "m_select":
             foc, idx = self.get_focus()
             signals.status_prompt_command.send(partial=foc.cmd.name + " ")
@@ -117,21 +111,21 @@ class CommandHelp(urwid.Frame):
     def set_active(self, val):
         h = urwid.Text("Command Help")
         style = "heading" if val else "heading_inactive"
-        self.header = urwid.AttrWrap(h, style)
+        self.header = urwid.AttrMap(h, style)
 
     def widget(self, txt):
         cols, _ = self.master.ui.get_cols_rows()
-        return urwid.ListBox(
-            [urwid.Text(i) for i in textwrap.wrap(txt, cols)]
-        )
+        return urwid.ListBox([urwid.Text(i) for i in textwrap.wrap(txt, cols)])
 
     def sig_mod(self, txt):
-        self.set_body(self.widget(txt))
+        self.body = self.widget(txt)
 
 
 class Commands(urwid.Pile, layoutwidget.LayoutWidget):
     title = "Command Reference"
     keyctx = "commands"
+
+    focus_position: int
 
     def __init__(self, master):
         oh = CommandHelp(master)
@@ -148,9 +142,7 @@ class Commands(urwid.Pile, layoutwidget.LayoutWidget):
 
     def keypress(self, size, key):
         if key == "m_next":
-            self.focus_position = (
-                self.focus_position + 1
-            ) % len(self.widget_list)
+            self.focus_position = (self.focus_position + 1) % len(self.widget_list)
             self.widget_list[1].set_active(self.focus_position == 1)
             key = None
 
@@ -158,7 +150,7 @@ class Commands(urwid.Pile, layoutwidget.LayoutWidget):
         # So much for "closed for modification, but open for extension".
         item_rows = None
         if len(size) == 2:
-            item_rows = self.get_item_rows(size, focus = True)
+            item_rows = self.get_item_rows(size, focus=True)
         i = self.widget_list.index(self.focus_item)
         tsize = self.get_item_size(size, i, True, item_rows)
         return self.focus_item.keypress(tsize, key)

@@ -94,10 +94,10 @@ The _separator_ is arbitrary, and is defined by the first character (`|` in the 
 
 Pattern | Description
 ------- | -----------
-`|example.com/main.js|~/main-local.js` | Replace `example.com/main.js` with `~/main-local.js`.
-`|example.com/static|~/static` | Replace `example.com/static/foo/bar.css` with `~/static/foo/bar.css`.
-`|example.com/static/foo|~/static` | Replace `example.com/static/foo/bar.css` with `~/static/bar.css`.
-`|~m GET|example.com/static|~/static` | Replace `example.com/static/foo/bar.css` with `~/static/foo/bar.css` (but only for GET requests).
+`\|example.com/main.js\|~/main-local.js` | Replace `example.com/main.js` with `~/main-local.js`.
+`\|example.com/static\|~/static` | Replace `example.com/static/foo/bar.css` with `~/static/foo/bar.css`.
+`\|example.com/static/foo\|~/static` | Replace `example.com/static/foo/bar.css` with `~/static/bar.css`.
+`\|~m GET\|example.com/static\|~/static` | Replace `example.com/static/foo/bar.css` with `~/static/foo/bar.css` (but only for GET requests).
 
 ### Details
 
@@ -205,7 +205,9 @@ if a modify hook is triggered on server response, the replacement is
 only run on the Response object leaving the Request intact. You control
 whether the hook triggers on the request, response or both using the
 filter pattern. If you need finer-grained control than this, it's simple
-to create a script using the replacement API on Flow components.
+to create a script using the replacement API on Flow components. Body
+modifications have no effect on streamed bodies. See
+[Streaming]({{< relref "#streaming" >}}) for more detail.
 
 #### Examples
 
@@ -275,7 +277,7 @@ Set the `User-Agent` header to the data read from `~/useragent.txt` for all requ
 (existing `User-Agent` headers are replaced):
 
 ```
-/~q/Host/@~/useragent.txt
+/~q/User-Agent/@~/useragent.txt
 ```
 
 Remove existing `Host` headers from all requests:
@@ -358,8 +360,9 @@ By default, mitmproxy will read an entire request/response, perform any
 indicated manipulations on it, and then send the message on to the other party.
 This can be problematic when downloading or uploading large files. When
 streaming is enabled, message bodies are not buffered on the proxy but instead
-sent directly to the server/client. HTTP headers are still fully buffered before
-being sent.
+sent directly to the server/client. This currently means that the message body
+will not be accessible within mitmproxy, and body modifications will have no
+effect. HTTP headers are still fully buffered before being sent.
 
 Request/response streaming is enabled by specifying a size cutoff in the
 `stream_large_bodies` option.

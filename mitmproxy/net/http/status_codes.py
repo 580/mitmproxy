@@ -1,5 +1,8 @@
 CONTINUE = 100
 SWITCHING = 101
+PROCESSING = 102
+EARLY_HINTS = 103
+
 OK = 200
 CREATED = 201
 ACCEPTED = 202
@@ -36,6 +39,7 @@ UNSUPPORTED_MEDIA_TYPE = 415
 REQUESTED_RANGE_NOT_SATISFIABLE = 416
 EXPECTATION_FAILED = 417
 IM_A_TEAPOT = 418
+UNPROCESSABLE_CONTENT = 422
 NO_RESPONSE = 444
 CLIENT_CLOSED_REQUEST = 499
 
@@ -52,7 +56,8 @@ RESPONSES = {
     # 100
     CONTINUE: "Continue",
     SWITCHING: "Switching Protocols",
-
+    PROCESSING: "Processing",
+    EARLY_HINTS: "Early Hints",
     # 200
     OK: "OK",
     CREATED: "Created",
@@ -62,7 +67,6 @@ RESPONSES = {
     RESET_CONTENT: "Reset Content.",
     PARTIAL_CONTENT: "Partial Content",
     MULTI_STATUS: "Multi-Status",
-
     # 300
     MULTIPLE_CHOICE: "Multiple Choices",
     MOVED_PERMANENTLY: "Moved Permanently",
@@ -72,7 +76,6 @@ RESPONSES = {
     USE_PROXY: "Use Proxy",
     # 306 not defined??
     TEMPORARY_REDIRECT: "Temporary Redirect",
-
     # 400
     BAD_REQUEST: "Bad Request",
     UNAUTHORIZED: "Unauthorized",
@@ -93,10 +96,9 @@ RESPONSES = {
     REQUESTED_RANGE_NOT_SATISFIABLE: "Requested Range not satisfiable",
     EXPECTATION_FAILED: "Expectation Failed",
     IM_A_TEAPOT: "I'm a teapot",
+    UNPROCESSABLE_CONTENT: "Unprocessable Content",
     NO_RESPONSE: "No Response",
     CLIENT_CLOSED_REQUEST: "Client Closed Request",
-
-
     # 500
     INTERNAL_SERVER_ERROR: "Internal Server Error",
     NOT_IMPLEMENTED: "Not Implemented",
@@ -105,5 +107,5 @@ RESPONSES = {
     GATEWAY_TIMEOUT: "Gateway Time-out",
     HTTP_VERSION_NOT_SUPPORTED: "HTTP Version not supported",
     INSUFFICIENT_STORAGE_SPACE: "Insufficient Storage Space",
-    NOT_EXTENDED: "Not Extended"
+    NOT_EXTENDED: "Not Extended",
 }

@@ -22,12 +22,10 @@ class Counter {
     /**
      * Constructs a new <code>Counter</code>.
      * @alias module:BrowserUpMitmProxyClient/model/Counter
-     * @param value {Number} Value for the counter
-     * @param name {String} Name of Custom Counter value you are adding to the page under _counters
      */
-    constructor(value, name) { 
+    constructor() { 
         
-        Counter.initialize(this, value, name);
+        Counter.initialize(this);
     }
 
     /**
@@ -35,9 +33,7 @@ class Counter {
      * This method is used by the constructors of any subclasses, in order to implement multiple inheritance (mix-ins).
      * Only for internal use.
      */
-    static initialize(obj, value, name) { 
-        obj['value'] = value;
-        obj['name'] = name;
+    static initialize(obj) { 
     }
 
     /**
@@ -61,8 +57,24 @@ class Counter {
         return obj;
     }
 
+    /**
+     * Validates the JSON data with respect to <code>Counter</code>.
+     * @param {Object} data The plain JavaScript object bearing properties of interest.
+     * @return {boolean} to indicate whether the JSON data is valid with respect to <code>Counter</code>.
+     */
+    static validateJSON(data) {
+        // ensure the json data is a string
+        if (data['name'] && !(typeof data['name'] === 'string' || data['name'] instanceof String)) {
+            throw new Error("Expected the field `name` to be a primitive type in the JSON string but got " + data['name']);
+        }
+
+        return true;
+    }
+
 
 }
+
+
 
 /**
  * Value for the counter
@@ -71,7 +83,7 @@ class Counter {
 Counter.prototype['value'] = undefined;
 
 /**
- * Name of Custom Counter value you are adding to the page under _counters
+ * Name of Custom Counter to add to the page under _counters
  * @member {String} name
  */
 Counter.prototype['name'] = undefined;

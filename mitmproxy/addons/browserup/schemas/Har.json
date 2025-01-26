@@ -3,6 +3,7 @@
   "required": [
     "log"
   ],
+  "additionalProperties": true,
   "properties": {
     "log": {
       "type": "object",
@@ -60,13 +61,12 @@
           "type": "array",
           "items": {
             "$ref": "#/components/schemas/Page"
-          },
-          "default": []
+          }
         },
         "entries": {
           "type": "array",
           "items": {
-            "$ref": "#/components/schemas/Entry"
+            "$ref": "#/components/schemas/HarEntry"
           }
         },
         "comment": {

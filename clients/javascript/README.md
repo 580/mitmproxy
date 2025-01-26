@@ -121,7 +121,7 @@ api.addCounter(counter, callback);
 
 ## Documentation for API Endpoints
 
-All URIs are relative to *http://localhost:8088*
+All URIs are relative to *http://localhost:48088*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
@@ -140,22 +140,30 @@ Class | Method | HTTP request | Description
 ## Documentation for Models
 
  - [BrowserUpMitmProxyClient.Counter](docs/Counter.md)
- - [BrowserUpMitmProxyClient.Entry](docs/Entry.md)
- - [BrowserUpMitmProxyClient.EntryRequest](docs/EntryRequest.md)
- - [BrowserUpMitmProxyClient.EntryRequestCookies](docs/EntryRequestCookies.md)
- - [BrowserUpMitmProxyClient.EntryRequestQueryString](docs/EntryRequestQueryString.md)
- - [BrowserUpMitmProxyClient.EntryResponse](docs/EntryResponse.md)
- - [BrowserUpMitmProxyClient.EntryResponseContent](docs/EntryResponseContent.md)
- - [BrowserUpMitmProxyClient.EntryTimings](docs/EntryTimings.md)
  - [BrowserUpMitmProxyClient.Error](docs/Error.md)
  - [BrowserUpMitmProxyClient.Har](docs/Har.md)
+ - [BrowserUpMitmProxyClient.HarEntry](docs/HarEntry.md)
+ - [BrowserUpMitmProxyClient.HarEntryCache](docs/HarEntryCache.md)
+ - [BrowserUpMitmProxyClient.HarEntryCacheBeforeRequest](docs/HarEntryCacheBeforeRequest.md)
+ - [BrowserUpMitmProxyClient.HarEntryCacheBeforeRequestOneOf](docs/HarEntryCacheBeforeRequestOneOf.md)
+ - [BrowserUpMitmProxyClient.HarEntryRequest](docs/HarEntryRequest.md)
+ - [BrowserUpMitmProxyClient.HarEntryRequestCookiesInner](docs/HarEntryRequestCookiesInner.md)
+ - [BrowserUpMitmProxyClient.HarEntryRequestPostData](docs/HarEntryRequestPostData.md)
+ - [BrowserUpMitmProxyClient.HarEntryRequestPostDataParamsInner](docs/HarEntryRequestPostDataParamsInner.md)
+ - [BrowserUpMitmProxyClient.HarEntryRequestQueryStringInner](docs/HarEntryRequestQueryStringInner.md)
+ - [BrowserUpMitmProxyClient.HarEntryResponse](docs/HarEntryResponse.md)
+ - [BrowserUpMitmProxyClient.HarEntryResponseContent](docs/HarEntryResponseContent.md)
+ - [BrowserUpMitmProxyClient.HarEntryTimings](docs/HarEntryTimings.md)
  - [BrowserUpMitmProxyClient.HarLog](docs/HarLog.md)
  - [BrowserUpMitmProxyClient.HarLogCreator](docs/HarLogCreator.md)
  - [BrowserUpMitmProxyClient.Header](docs/Header.md)
+ - [BrowserUpMitmProxyClient.LargestContentfulPaint](docs/LargestContentfulPaint.md)
  - [BrowserUpMitmProxyClient.MatchCriteria](docs/MatchCriteria.md)
+ - [BrowserUpMitmProxyClient.MatchCriteriaRequestHeader](docs/MatchCriteriaRequestHeader.md)
  - [BrowserUpMitmProxyClient.NameValuePair](docs/NameValuePair.md)
  - [BrowserUpMitmProxyClient.Page](docs/Page.md)
- - [BrowserUpMitmProxyClient.PagePageTimings](docs/PagePageTimings.md)
+ - [BrowserUpMitmProxyClient.PageTiming](docs/PageTiming.md)
+ - [BrowserUpMitmProxyClient.PageTimings](docs/PageTimings.md)
  - [BrowserUpMitmProxyClient.VerifyResult](docs/VerifyResult.md)
  - [BrowserUpMitmProxyClient.WebSocketMessage](docs/WebSocketMessage.md)
 

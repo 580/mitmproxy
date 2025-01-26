@@ -1,9 +1,9 @@
 import json
-
-import typing
+from typing import Any
 
 from mitmproxy.contentviews import base
-from mitmproxy.contentviews.json import parse_json, PARSE_ERROR
+from mitmproxy.contentviews.json import PARSE_ERROR
+from mitmproxy.contentviews.json import parse_json
 
 
 def format_graphql(data):
@@ -13,14 +13,14 @@ def format_graphql(data):
     return """{header}
 ---
 {query}
-""".format(header=json.dumps(header_data, indent=2), query = query)
+""".format(header=json.dumps(header_data, indent=2), query=query)
 
 
-def format_query_list(data: typing.List[typing.Any]):
+def format_query_list(data: list[Any]):
     num_queries = len(data) - 1
     result = ""
     for i, op in enumerate(data):
-        result += "--- {i}/{num_queries}\n".format(i=i, num_queries=num_queries)
+        result += f"--- {i}/{num_queries}\n"
         result += format_graphql(op)
     return result
 
@@ -30,7 +30,12 @@ def is_graphql_query(data):
 
 
 def is_graphql_batch_query(data):
-    return isinstance(data, list) and isinstance(data[0], dict) and "query" in data[0]
+    return (
+        isinstance(data, list)
+        and len(data) > 0
+        and isinstance(data[0], dict)
+        and "query" in data[0]
+    )
 
 
 class ViewGraphQL(base.View):
@@ -44,7 +49,9 @@ class ViewGraphQL(base.View):
             elif is_graphql_batch_query(data):
                 return "GraphQL", base.format_text(format_query_list(data))
 
-    def render_priority(self, data: bytes, *, content_type: typing.Optional[str] = None, **metadata) -> float:
+    def render_priority(
+        self, data: bytes, *, content_type: str | None = None, **metadata
+    ) -> float:
         if content_type != "application/json" or not data:
             return 0
 

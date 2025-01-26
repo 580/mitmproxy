@@ -1,120 +1,141 @@
 import asyncio
 import logging
-import sys
-import threading
-import traceback
 
-from mitmproxy import addonmanager, hooks
+from . import ctx as mitmproxy_ctx
+from .addons import termlog
+from .proxy.mode_specs import ReverseMode
+from .utils import asyncio_utils
+from mitmproxy import addonmanager
 from mitmproxy import command
-from mitmproxy import controller
 from mitmproxy import eventsequence
+from mitmproxy import hooks
 from mitmproxy import http
 from mitmproxy import log
 from mitmproxy import options
-from mitmproxy.net import server_spec
-from . import ctx as mitmproxy_ctx
 
-# Conclusively preventing cross-thread races on proxy shutdown turns out to be
-# very hard. We could build a thread sync infrastructure for this, or we could
-# wait until we ditch threads and move all the protocols into the async loop.
-# Until then, silence non-critical errors.
-logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+logger = logging.getLogger(__name__)
 
 
 class Master:
     """
-        The master handles mitmproxy's main event loop.
+    The master handles mitmproxy's main event loop.
     """
 
-    def __init__(self, opts):
-        self.should_exit = threading.Event()
-        self.event_loop = asyncio.get_event_loop()
+    event_loop: asyncio.AbstractEventLoop
+    _termlog_addon: termlog.TermLog | None = None
+
+    def __init__(
+        self,
+        opts: options.Options,
+        event_loop: asyncio.AbstractEventLoop | None = None,
+        with_termlog: bool = False,
+    ):
         self.options: options.Options = opts or options.Options()
         self.commands = command.CommandManager(self)
         self.addons = addonmanager.AddonManager(self)
-        self._server = None
-        self.log = log.Log(self)
 
+        if with_termlog:
+            self._termlog_addon = termlog.TermLog()
+            self.addons.add(self._termlog_addon)
+
+        self.log = log.Log(self)  # deprecated, do not use.
+        self._legacy_log_events = log.LegacyLogEvents(self)
+        self._legacy_log_events.install()
+
+        # We expect an active event loop here already because some addons
+        # may want to spawn tasks during the initial configuration phase,
+        # which happens before run().
+        self.event_loop = event_loop or asyncio.get_running_loop()
+        self.should_exit = asyncio.Event()
         mitmproxy_ctx.master = self
-        mitmproxy_ctx.log = self.log
+        mitmproxy_ctx.log = self.log  # deprecated, do not use.
         mitmproxy_ctx.options = self.options
 
-    def start(self):
-        self.should_exit.clear()
+    async def run(self) -> None:
+        with (
+            asyncio_utils.install_exception_handler(self._asyncio_exception_handler),
+            asyncio_utils.set_eager_task_factory(),
+        ):
+            self.should_exit.clear()
 
-    async def running(self):
-        self.addons.trigger(hooks.RunningHook())
+            # Can we exit before even bringing up servers?
+            if ec := self.addons.get("errorcheck"):
+                await ec.shutdown_if_errored()
+            if ps := self.addons.get("proxyserver"):
+                # This may block for some proxy modes, so we also monitor should_exit.
+                await asyncio.wait(
+                    [
+                        asyncio.create_task(ps.setup_servers()),
+                        asyncio.create_task(self.should_exit.wait()),
+                    ],
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                if self.should_exit.is_set():
+                    return
+                # Did bringing up servers fail?
+                if ec := self.addons.get("errorcheck"):
+                    await ec.shutdown_if_errored()
 
-    def run_loop(self, loop):
-        self.start()
-        asyncio.ensure_future(self.running())
+            try:
+                await self.running()
+                # Any errors in the final part of startup?
+                if ec := self.addons.get("errorcheck"):
+                    await ec.shutdown_if_errored()
+                    ec.finish()
 
-        exc = None
-        try:
-            loop()
-        except Exception:  # pragma: no cover
-            exc = traceback.format_exc()
-        finally:
-            if not self.should_exit.is_set():  # pragma: no cover
-                self.shutdown()
-            loop = asyncio.get_event_loop()
-            tasks = asyncio.all_tasks(loop)
-            for p in tasks:
-                p.cancel()
-            loop.close()
-
-        if exc:  # pragma: no cover
-            print(exc, file=sys.stderr)
-            print("mitmproxy has crashed!", file=sys.stderr)
-            print("Please lodge a bug report at:", file=sys.stderr)
-            print("\thttps://github.com/mitmproxy/mitmproxy/issues", file=sys.stderr)
-
-        self.addons.trigger(hooks.DoneHook())
-
-    def run(self):
-        loop = asyncio.get_event_loop()
-        self.run_loop(loop.run_forever)
-
-    async def _shutdown(self):
-        self.should_exit.set()
-        loop = asyncio.get_event_loop()
-        loop.stop()
+                await self.should_exit.wait()
+            finally:
+                # if running() was called, we also always want to call done().
+                # .wait might be cancelled (e.g. by sys.exit), so  this needs to be in a finally block.
+                await self.done()
 
     def shutdown(self):
         """
-            Shut down the proxy. This method is thread-safe.
+        Shut down the proxy. This method is thread-safe.
         """
-        if not self.should_exit.is_set():
-            self.should_exit.set()
-            ret = asyncio.run_coroutine_threadsafe(self._shutdown(), loop=self.event_loop)
-            # Weird band-aid to make sure that self._shutdown() is actually executed,
-            # which otherwise hangs the process as the proxy server is threaded.
-            # This all needs to be simplified when the proxy server runs on asyncio as well.
-            if not self.event_loop.is_running():  # pragma: no cover
-                try:
-                    self.event_loop.run_until_complete(asyncio.wrap_future(ret))
-                except RuntimeError:
-                    pass  # Event loop stopped before Future completed.
+        # We may add an exception argument here.
+        self.event_loop.call_soon_threadsafe(self.should_exit.set)
 
-    def _change_reverse_host(self, f):
-        """
-        When we load flows in reverse proxy mode, we adjust the target host to
-        the reverse proxy destination for all flows we load. This makes it very
-        easy to replay saved flows against a different host.
-        """
-        if self.options.mode.startswith("reverse:"):
-            _, upstream_spec = server_spec.parse_with_mode(self.options.mode)
-            f.request.host, f.request.port = upstream_spec.address
-            f.request.scheme = upstream_spec.scheme
+    async def running(self) -> None:
+        await self.addons.trigger_event(hooks.RunningHook())
+
+    async def done(self) -> None:
+        await self.addons.trigger_event(hooks.DoneHook())
+        self._legacy_log_events.uninstall()
+        if self._termlog_addon is not None:
+            self._termlog_addon.uninstall()
+
+    def _asyncio_exception_handler(self, loop, context) -> None:
+        try:
+            exc: Exception = context["exception"]
+        except KeyError:
+            logger.error(f"Unhandled asyncio error: {context}")
+        else:
+            if isinstance(exc, OSError) and exc.errno == 10038:
+                return  # suppress https://bugs.python.org/issue43253
+            logger.error(
+                "Unhandled error in task.",
+                exc_info=(type(exc), exc, exc.__traceback__),
+            )
 
     async def load_flow(self, f):
         """
         Loads a flow
         """
 
-        if isinstance(f, http.HTTPFlow):
-            self._change_reverse_host(f)
+        if (
+            isinstance(f, http.HTTPFlow)
+            and len(self.options.mode) == 1
+            and self.options.mode[0].startswith("reverse:")
+        ):
+            # When we load flows in reverse proxy mode, we adjust the target host to
+            # the reverse proxy destination for all flows we load. This makes it very
+            # easy to replay saved flows against a different host.
+            # We may change this in the future so that clientplayback always replays to the first mode.
+            mode = ReverseMode.parse(self.options.mode[0])
+            assert isinstance(mode, ReverseMode)
+            f.request.host, f.request.port, *_ = mode.address
+            f.request.scheme = mode.scheme
 
-        f.reply = controller.DummyReply()
         for e in eventsequence.iterate(f):
             await self.addons.handle_lifecycle(e)

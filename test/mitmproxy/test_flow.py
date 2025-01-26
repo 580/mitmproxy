@@ -8,8 +8,10 @@ from mitmproxy import flowfilter
 from mitmproxy import options
 from mitmproxy.exceptions import FlowReadException
 from mitmproxy.io import tnetstring
-from mitmproxy.proxy import server_hooks, layers
-from mitmproxy.test import taddons, tflow
+from mitmproxy.proxy import layers
+from mitmproxy.proxy import server_hooks
+from mitmproxy.test import taddons
+from mitmproxy.test import tflow
 
 
 class State:
@@ -30,7 +32,6 @@ class State:
 
 
 class TestSerialize:
-
     def test_roundtrip(self):
         sio = io.BytesIO()
         f = tflow.tflow()
@@ -43,13 +44,14 @@ class TestSerialize:
 
         sio.seek(0)
         r = mitmproxy.io.FlowReader(sio)
-        l = list(r.stream())
-        assert len(l) == 1
+        lst = list(r.stream())
+        assert len(lst) == 1
 
-        f2 = l[0]
+        f2 = lst[0]
         assert f2.get_state() == f.get_state()
         assert f2.request.data == f.request.data
         assert f2.marked
+        assert f2.comment == "test comment"
 
     def test_filter(self):
         sio = io.BytesIO()
@@ -69,20 +71,21 @@ class TestSerialize:
         assert len(list(r.stream()))
 
     def test_error(self):
-        sio = io.BytesIO()
-        sio.write(b"bogus")
-        sio.seek(0)
-        r = mitmproxy.io.FlowReader(sio)
-        with pytest.raises(FlowReadException, match='Invalid data format'):
+        buf = io.BytesIO()
+        buf.write(b"bogus")
+        buf.seek(0)
+        r = mitmproxy.io.FlowReader(buf)
+        with pytest.raises(FlowReadException, match="Invalid data format"):
             list(r.stream())
 
-        sio = io.BytesIO()
+        buf = io.BytesIO()
         f = tflow.tdummyflow()
-        w = mitmproxy.io.FlowWriter(sio)
+        w = mitmproxy.io.FlowWriter(buf)
         w.add(f)
-        sio.seek(0)
-        r = mitmproxy.io.FlowReader(sio)
-        with pytest.raises(FlowReadException, match='Unknown flow type'):
+
+        buf = io.BytesIO(buf.getvalue().replace(b"dummy", b"nknwn"))
+        r = mitmproxy.io.FlowReader(buf)
+        with pytest.raises(FlowReadException, match="Unknown flow type"):
             list(r.stream())
 
         f = FlowReadException("foo")
@@ -113,26 +116,22 @@ class TestSerialize:
 
 
 class TestFlowMaster:
-    @pytest.mark.asyncio
     async def test_load_http_flow_reverse(self):
-        opts = options.Options(
-            mode="reverse:https://use-this-domain"
-        )
+        opts = options.Options(mode=["reverse:https://use-this-domain"])
         s = State()
         with taddons.context(s, options=opts) as ctx:
             f = tflow.tflow(resp=True)
             await ctx.master.load_flow(f)
             assert s.flows[0].request.host == "use-this-domain"
 
-    @pytest.mark.asyncio
     async def test_all(self):
-        opts = options.Options(
-            mode="reverse:https://use-this-domain"
-        )
+        opts = options.Options(mode=["reverse:https://use-this-domain"])
         s = State()
         with taddons.context(s, options=opts) as ctx:
             f = tflow.tflow(req=None)
-            await ctx.master.addons.handle_lifecycle(server_hooks.ClientConnectedHook(f.client_conn))
+            await ctx.master.addons.handle_lifecycle(
+                server_hooks.ClientConnectedHook(f.client_conn)
+            )
             f.request = mitmproxy.test.tutils.treq()
             await ctx.master.addons.handle_lifecycle(layers.http.HttpRequestHook(f))
             assert len(s.flows) == 1
@@ -141,14 +140,15 @@ class TestFlowMaster:
             await ctx.master.addons.handle_lifecycle(layers.http.HttpResponseHook(f))
             assert len(s.flows) == 1
 
-            await ctx.master.addons.handle_lifecycle(server_hooks.ClientDisconnectedHook(f.client_conn))
+            await ctx.master.addons.handle_lifecycle(
+                server_hooks.ClientDisconnectedHook(f.client_conn)
+            )
 
             f.error = flow.Error("msg")
             await ctx.master.addons.handle_lifecycle(layers.http.HttpErrorHook(f))
 
 
 class TestError:
-
     def test_getset_state(self):
         e = flow.Error("Error")
         state = e.get_state()

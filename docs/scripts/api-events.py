@@ -2,20 +2,29 @@
 import contextlib
 import inspect
 import textwrap
+import typing
 from pathlib import Path
-from typing import List, Type
 
-import mitmproxy.addons.next_layer  # noqa
-from mitmproxy import hooks, log, addonmanager
-from mitmproxy.proxy import server_hooks, layer
-from mitmproxy.proxy.layers import http, modes, tcp, tls, websocket
+from mitmproxy import addonmanager
+from mitmproxy import hooks
+from mitmproxy import log
+from mitmproxy.proxy import layer
+from mitmproxy.proxy import server_hooks
+from mitmproxy.proxy.layers import dns
+from mitmproxy.proxy.layers import modes
+from mitmproxy.proxy.layers import quic
+from mitmproxy.proxy.layers import tcp
+from mitmproxy.proxy.layers import tls
+from mitmproxy.proxy.layers import udp
+from mitmproxy.proxy.layers import websocket
+from mitmproxy.proxy.layers.http import _hooks as http
 
 known = set()
 
 
-def category(name: str, desc: str, hooks: List[Type[hooks.Hook]]) -> None:
+def category(name: str, desc: str, hooks: list[type[hooks.Hook]]) -> None:
     all_params = [
-        list(inspect.signature(hook.__init__).parameters.values())[1:]
+        list(inspect.signature(hook.__init__, eval_str=True).parameters.values())[1:]
         for hook in hooks
     ]
 
@@ -25,19 +34,15 @@ def category(name: str, desc: str, hooks: List[Type[hooks.Hook]]) -> None:
     for params in all_params:
         for param in params:
             try:
-                mod = inspect.getmodule(param.annotation).__name__
-                if mod == "typing":
-                    # this is ugly, but can be removed once we are on Python 3.9+ only
-                    imports.add(inspect.getmodule(param.annotation.__args__[0]).__name__)
-                    types.add(param.annotation._name)
-                else:
-                    imports.add(mod)
+                imports.add(inspect.getmodule(param.annotation).__name__)
+                for t in typing.get_args(param.annotation):
+                    imports.add(inspect.getmodule(t).__name__)
             except AttributeError:
                 raise ValueError(f"Missing type annotation: {params}")
     imports.discard("builtins")
     if types:
         print(f"from typing import {', '.join(sorted(types))}")
-    print("from mitmproxy import ctx")
+    print("import logging")
     for imp in sorted(imports):
         print(f"import {imp}")
     print()
@@ -55,12 +60,15 @@ def category(name: str, desc: str, hooks: List[Type[hooks.Hook]]) -> None:
             raise RuntimeError(f"Already documented: {hook}")
         known.add(hook.name)
         doc = inspect.getdoc(hook)
-        print(f"    def {hook.name}({', '.join(str(p) for p in ['self'] + params)}):")
+        print(f"    @staticmethod")
+        print(f"    def {hook.name}({', '.join(str(p) for p in params)}):")
         print(textwrap.indent(f'"""\n{doc}\n"""', "        "))
         if params:
-            print(f'        ctx.log(f"{hook.name}: {" ".join("{" + p.name + "=}" for p in params)}")')
+            print(
+                f'        logging.info(f"{hook.name}: {" ".join("{" + p.name + "=}" for p in params)}")'
+            )
         else:
-            print(f'        ctx.log("{hook.name}")')
+            print(f'        logging.info("{hook.name}")')
     print("")
 
 
@@ -77,7 +85,7 @@ with outfile.open("w") as f, contextlib.redirect_stdout(f):
             hooks.RunningHook,
             hooks.ConfigureHook,
             hooks.DoneHook,
-        ]
+        ],
     )
 
     category(
@@ -89,7 +97,8 @@ with outfile.open("w") as f, contextlib.redirect_stdout(f):
             server_hooks.ServerConnectHook,
             server_hooks.ServerConnectedHook,
             server_hooks.ServerDisconnectedHook,
-        ]
+            server_hooks.ServerConnectErrorHook,
+        ],
     )
 
     category(
@@ -103,7 +112,19 @@ with outfile.open("w") as f, contextlib.redirect_stdout(f):
             http.HttpErrorHook,
             http.HttpConnectHook,
             http.HttpConnectUpstreamHook,
-        ]
+            http.HttpConnectedHook,
+            http.HttpConnectErrorHook,
+        ],
+    )
+
+    category(
+        "DNS",
+        "",
+        [
+            dns.DnsRequestHook,
+            dns.DnsResponseHook,
+            dns.DnsErrorHook,
+        ],
     )
 
     category(
@@ -114,7 +135,27 @@ with outfile.open("w") as f, contextlib.redirect_stdout(f):
             tcp.TcpMessageHook,
             tcp.TcpEndHook,
             tcp.TcpErrorHook,
-        ]
+        ],
+    )
+
+    category(
+        "UDP",
+        "",
+        [
+            udp.UdpStartHook,
+            udp.UdpMessageHook,
+            udp.UdpEndHook,
+            udp.UdpErrorHook,
+        ],
+    )
+
+    category(
+        "QUIC",
+        "",
+        [
+            quic.QuicStartClientHook,
+            quic.QuicStartServerHook,
+        ],
     )
 
     category(
@@ -124,7 +165,11 @@ with outfile.open("w") as f, contextlib.redirect_stdout(f):
             tls.TlsClienthelloHook,
             tls.TlsStartClientHook,
             tls.TlsStartServerHook,
-        ]
+            tls.TlsEstablishedClientHook,
+            tls.TlsEstablishedServerHook,
+            tls.TlsFailedClientHook,
+            tls.TlsFailedServerHook,
+        ],
     )
 
     category(
@@ -134,7 +179,7 @@ with outfile.open("w") as f, contextlib.redirect_stdout(f):
             websocket.WebsocketStartHook,
             websocket.WebsocketMessageHook,
             websocket.WebsocketEndHook,
-        ]
+        ],
     )
 
     category(
@@ -142,7 +187,7 @@ with outfile.open("w") as f, contextlib.redirect_stdout(f):
         "",
         [
             modes.Socks5AuthHook,
-        ]
+        ],
     )
 
     category(
@@ -152,7 +197,7 @@ with outfile.open("w") as f, contextlib.redirect_stdout(f):
             layer.NextLayerHook,
             hooks.UpdateHook,
             log.AddLogHook,
-        ]
+        ],
     )
 
 not_documented = set(hooks.all_hooks.keys()) - known

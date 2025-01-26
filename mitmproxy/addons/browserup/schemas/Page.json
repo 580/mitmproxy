@@ -4,9 +4,9 @@
     "startedDateTime",
     "id",
     "title",
-    "pageTimings",
-    "_verifications"
+    "pageTimings"
   ],
+  "additionalProperties": true,
   "properties": {
     "startedDateTime": {
       "type": "string",
@@ -40,29 +40,9 @@
       "default": []
     },
     "pageTimings": {
-      "type": "object",
-      "required": [
-        "onLoad",
-        "onContentLoad"
-      ],
-      "properties": {
-        "onContentLoad": {
-          "type": "integer",
-          "format": "int64",
-          "minimum": -1,
-          "default": -1
-        },
-        "onLoad": {
-          "type": "integer",
-          "format": "int64",
-          "minimum": -1,
-          "default": -1
-        },
-        "comment": {
-          "type": "string"
-        }
-      }
+      "$ref": "#/components/schemas/PageTimings"
     },
+
     "comment": {
       "type": "string"
     }

@@ -2,15 +2,13 @@ import datetime
 import functools
 import ipaddress
 import time
-import typing
-
 
 SIZE_UNITS = {
-    "b": 1024 ** 0,
-    "k": 1024 ** 1,
-    "m": 1024 ** 2,
-    "g": 1024 ** 3,
-    "t": 1024 ** 4,
+    "b": 1024**0,
+    "k": 1024**1,
+    "m": 1024**2,
+    "g": 1024**3,
+    "t": 1024**4,
 }
 
 
@@ -31,8 +29,8 @@ def pretty_size(size: int) -> str:
     raise AssertionError
 
 
-@functools.lru_cache()
-def parse_size(s: typing.Optional[str]) -> typing.Optional[int]:
+@functools.lru_cache
+def parse_size(s: str | None) -> int | None:
     """
     Parse a size with an optional k/m/... suffix.
     Invalid values raise a ValueError. For added convenience, passing `None` returns `None`.
@@ -52,7 +50,7 @@ def parse_size(s: typing.Optional[str]) -> typing.Optional[int]:
     raise ValueError("Invalid size specification.")
 
 
-def pretty_duration(secs: typing.Optional[float]) -> str:
+def pretty_duration(secs: float | None) -> str:
     formatters = [
         (100, "{:.0f}s"),
         (10, "{:2.1f}s"),
@@ -65,7 +63,7 @@ def pretty_duration(secs: typing.Optional[float]) -> str:
         if secs >= limit:
             return formatter.format(secs)
     # less than 1 sec
-    return "{:.0f}ms".format(secs * 1000)
+    return f"{secs * 1000:.0f}ms"
 
 
 def format_timestamp(s):
@@ -79,8 +77,8 @@ def format_timestamp_with_milli(s):
     return d.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
 
-@functools.lru_cache()
-def format_address(address: typing.Optional[tuple]) -> str:
+@functools.lru_cache
+def format_address(address: tuple | None) -> str:
     """
     This function accepts IPv4/IPv6 tuples and
     returns the formatted address string with port number
@@ -90,12 +88,12 @@ def format_address(address: typing.Optional[tuple]) -> str:
     try:
         host = ipaddress.ip_address(address[0])
         if host.is_unspecified:
-            return "*:{}".format(address[1])
+            return f"*:{address[1]}"
         if isinstance(host, ipaddress.IPv4Address):
-            return "{}:{}".format(str(host), address[1])
+            return f"{str(host)}:{address[1]}"
         # If IPv6 is mapped to IPv4
         elif host.ipv4_mapped:
-            return "{}:{}".format(str(host.ipv4_mapped), address[1])
-        return "[{}]:{}".format(str(host), address[1])
+            return f"{str(host.ipv4_mapped)}:{address[1]}"
+        return f"[{str(host)}]:{address[1]}"
     except ValueError:
-        return "{}:{}".format(address[0], address[1])
+        return f"{address[0]}:{address[1]}"

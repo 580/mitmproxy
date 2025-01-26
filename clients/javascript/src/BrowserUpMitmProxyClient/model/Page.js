@@ -14,7 +14,7 @@
 import ApiClient from '../ApiClient';
 import Counter from './Counter';
 import Error from './Error';
-import PagePageTimings from './PagePageTimings';
+import PageTimings from './PageTimings';
 import VerifyResult from './VerifyResult';
 
 /**
@@ -26,15 +26,15 @@ class Page {
     /**
      * Constructs a new <code>Page</code>.
      * @alias module:BrowserUpMitmProxyClient/model/Page
+     * @extends Object
      * @param startedDateTime {Date} 
      * @param id {String} 
      * @param title {String} 
-     * @param verifications {Array.<module:BrowserUpMitmProxyClient/model/VerifyResult>} 
-     * @param pageTimings {module:BrowserUpMitmProxyClient/model/PagePageTimings} 
+     * @param pageTimings {module:BrowserUpMitmProxyClient/model/PageTimings} 
      */
-    constructor(startedDateTime, id, title, verifications, pageTimings) { 
+    constructor(startedDateTime, id, title, pageTimings) { 
         
-        Page.initialize(this, startedDateTime, id, title, verifications, pageTimings);
+        Page.initialize(this, startedDateTime, id, title, pageTimings);
     }
 
     /**
@@ -42,11 +42,10 @@ class Page {
      * This method is used by the constructors of any subclasses, in order to implement multiple inheritance (mix-ins).
      * Only for internal use.
      */
-    static initialize(obj, startedDateTime, id, title, verifications, pageTimings) { 
+    static initialize(obj, startedDateTime, id, title, pageTimings) { 
         obj['startedDateTime'] = startedDateTime;
         obj['id'] = id;
         obj['title'] = title;
-        obj['_verifications'] = verifications;
         obj['pageTimings'] = pageTimings;
     }
 
@@ -60,6 +59,9 @@ class Page {
     static constructFromObject(data, obj) {
         if (data) {
             obj = obj || new Page();
+
+            ApiClient.constructFromObject(data, obj, 'Object');
+            
 
             if (data.hasOwnProperty('startedDateTime')) {
                 obj['startedDateTime'] = ApiClient.convertToType(data['startedDateTime'], 'Date');
@@ -80,7 +82,7 @@ class Page {
                 obj['_errors'] = ApiClient.convertToType(data['_errors'], [Error]);
             }
             if (data.hasOwnProperty('pageTimings')) {
-                obj['pageTimings'] = PagePageTimings.constructFromObject(data['pageTimings']);
+                obj['pageTimings'] = PageTimings.constructFromObject(data['pageTimings']);
             }
             if (data.hasOwnProperty('comment')) {
                 obj['comment'] = ApiClient.convertToType(data['comment'], 'String');
@@ -89,8 +91,68 @@ class Page {
         return obj;
     }
 
+    /**
+     * Validates the JSON data with respect to <code>Page</code>.
+     * @param {Object} data The plain JavaScript object bearing properties of interest.
+     * @return {boolean} to indicate whether the JSON data is valid with respect to <code>Page</code>.
+     */
+    static validateJSON(data) {
+        // check to make sure all required properties are present in the JSON string
+        for (const property of Page.RequiredProperties) {
+            if (!data[property]) {
+                throw new Error("The required field `" + property + "` is not found in the JSON data: " + JSON.stringify(data));
+            }
+        }
+        // ensure the json data is a string
+        if (data['id'] && !(typeof data['id'] === 'string' || data['id'] instanceof String)) {
+            throw new Error("Expected the field `id` to be a primitive type in the JSON string but got " + data['id']);
+        }
+        // ensure the json data is a string
+        if (data['title'] && !(typeof data['title'] === 'string' || data['title'] instanceof String)) {
+            throw new Error("Expected the field `title` to be a primitive type in the JSON string but got " + data['title']);
+        }
+        if (data['_verifications']) { // data not null
+            // ensure the json data is an array
+            if (!Array.isArray(data['_verifications'])) {
+                throw new Error("Expected the field `_verifications` to be an array in the JSON data but got " + data['_verifications']);
+            }
+            // validate the optional field `_verifications` (array)
+            for (const item of data['_verifications']) {
+                VerifyResult.validateJSON(item);
+            };
+        }
+        if (data['_counters']) { // data not null
+            // ensure the json data is an array
+            if (!Array.isArray(data['_counters'])) {
+                throw new Error("Expected the field `_counters` to be an array in the JSON data but got " + data['_counters']);
+            }
+            // validate the optional field `_counters` (array)
+            for (const item of data['_counters']) {
+                Counter.validateJSON(item);
+            };
+        }
+        if (data['_errors']) { // data not null
+            // ensure the json data is an array
+            if (!Array.isArray(data['_errors'])) {
+                throw new Error("Expected the field `_errors` to be an array in the JSON data but got " + data['_errors']);
+            }
+            // validate the optional field `_errors` (array)
+            for (const item of data['_errors']) {
+                Error.validateJSON(item);
+            };
+        }
+        // ensure the json data is a string
+        if (data['comment'] && !(typeof data['comment'] === 'string' || data['comment'] instanceof String)) {
+            throw new Error("Expected the field `comment` to be a primitive type in the JSON string but got " + data['comment']);
+        }
+
+        return true;
+    }
+
 
 }
+
+Page.RequiredProperties = ["startedDateTime", "id", "title", "pageTimings"];
 
 /**
  * @member {Date} startedDateTime
@@ -123,7 +185,7 @@ Page.prototype['_counters'] = undefined;
 Page.prototype['_errors'] = undefined;
 
 /**
- * @member {module:BrowserUpMitmProxyClient/model/PagePageTimings} pageTimings
+ * @member {module:BrowserUpMitmProxyClient/model/PageTimings} pageTimings
  */
 Page.prototype['pageTimings'] = undefined;
 

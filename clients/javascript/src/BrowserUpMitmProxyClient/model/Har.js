@@ -23,6 +23,7 @@ class Har {
     /**
      * Constructs a new <code>Har</code>.
      * @alias module:BrowserUpMitmProxyClient/model/Har
+     * @extends Object
      * @param log {module:BrowserUpMitmProxyClient/model/HarLog} 
      */
     constructor(log) { 
@@ -50,6 +51,9 @@ class Har {
         if (data) {
             obj = obj || new Har();
 
+            ApiClient.constructFromObject(data, obj, 'Object');
+            
+
             if (data.hasOwnProperty('log')) {
                 obj['log'] = HarLog.constructFromObject(data['log']);
             }
@@ -57,8 +61,30 @@ class Har {
         return obj;
     }
 
+    /**
+     * Validates the JSON data with respect to <code>Har</code>.
+     * @param {Object} data The plain JavaScript object bearing properties of interest.
+     * @return {boolean} to indicate whether the JSON data is valid with respect to <code>Har</code>.
+     */
+    static validateJSON(data) {
+        // check to make sure all required properties are present in the JSON string
+        for (const property of Har.RequiredProperties) {
+            if (!data[property]) {
+                throw new Error("The required field `" + property + "` is not found in the JSON data: " + JSON.stringify(data));
+            }
+        }
+        // validate the optional field `log`
+        if (data['log']) { // data not null
+          HarLog.validateJSON(data['log']);
+        }
+
+        return true;
+    }
+
 
 }
+
+Har.RequiredProperties = ["log"];
 
 /**
  * @member {module:BrowserUpMitmProxyClient/model/HarLog} log

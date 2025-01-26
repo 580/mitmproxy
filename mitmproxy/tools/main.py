@@ -1,31 +1,23 @@
+from __future__ import annotations
+
 import argparse
 import asyncio
+import logging
 import os
 import signal
 import sys
-import typing
+from collections.abc import Callable
+from collections.abc import Sequence
+from typing import Any
+from typing import TypeVar
 
-from mitmproxy import exceptions, master
+from mitmproxy import exceptions
+from mitmproxy import master
 from mitmproxy import options
 from mitmproxy import optmanager
 from mitmproxy.tools import cmdline
-from mitmproxy.utils import debug, arg_check
-
-
-def assert_utf8_env():
-    spec = ""
-    for i in ["LANG", "LC_CTYPE", "LC_ALL"]:
-        spec += os.environ.get(i, "").lower()
-    if "utf" not in spec:
-        print(
-            "Error: mitmproxy requires a UTF console environment.",
-            file=sys.stderr
-        )
-        print(
-            "Set your LANG environment variable to something like en_US.UTF-8",
-            file=sys.stderr
-        )
-        sys.exit(1)
+from mitmproxy.utils import arg_check
+from mitmproxy.utils import debug
 
 
 def process_options(parser, opts, args):
@@ -35,104 +27,124 @@ def process_options(parser, opts, args):
     if args.quiet or args.options or args.commands:
         # also reduce log verbosity if --options or --commands is passed,
         # we don't want log messages from regular startup then.
-        args.termlog_verbosity = 'error'
+        args.termlog_verbosity = "error"
         args.flow_detail = 0
     if args.verbose:
-        args.termlog_verbosity = 'debug'
+        args.termlog_verbosity = "debug"
         args.flow_detail = 2
 
-    adict = {}
-    for n in dir(args):
-        if n in opts:
-            adict[n] = getattr(args, n)
-    opts.merge(adict)
+    adict = {
+        key: val for key, val in vars(args).items() if key in opts and val is not None
+    }
+    opts.update(**adict)
+
+
+T = TypeVar("T", bound=master.Master)
 
 
 def run(
-        master_cls: typing.Type[master.Master],
-        make_parser: typing.Callable[[options.Options], argparse.ArgumentParser],
-        arguments: typing.Sequence[str],
-        extra: typing.Callable[[typing.Any], dict] = None
-) -> master.Master:  # pragma: no cover
+    master_cls: type[T],
+    make_parser: Callable[[options.Options], argparse.ArgumentParser],
+    arguments: Sequence[str],
+    extra: Callable[[Any], dict] | None = None,
+) -> T:  # pragma: no cover
     """
-        extra: Extra argument processing callable which returns a dict of
-        options.
+    extra: Extra argument processing callable which returns a dict of
+    options.
     """
-    debug.register_info_dumpers()
 
-    opts = options.Options()
-    master = master_cls(opts)
+    async def main() -> T:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logging.getLogger("tornado").setLevel(logging.WARNING)
+        logging.getLogger("asyncio").setLevel(logging.WARNING)
+        logging.getLogger("hpack").setLevel(logging.WARNING)
+        logging.getLogger("quic").setLevel(
+            logging.WARNING
+        )  # aioquic uses a different prefix...
+        debug.register_info_dumpers()
 
-    parser = make_parser(opts)
+        opts = options.Options()
+        master = master_cls(opts)
 
-    # To make migration from 2.x to 3.0 bearable.
-    if "-R" in sys.argv and sys.argv[sys.argv.index("-R") + 1].startswith("http"):
-        print("To use mitmproxy in reverse mode please use --mode reverse:SPEC instead")
+        parser = make_parser(opts)
 
-    try:
-        args = parser.parse_args(arguments)
-    except SystemExit:
-        arg_check.check()
-        sys.exit(1)
+        # To make migration from 2.x to 3.0 bearable.
+        if "-R" in sys.argv and sys.argv[sys.argv.index("-R") + 1].startswith("http"):
+            print(
+                "To use mitmproxy in reverse mode please use --mode reverse:SPEC instead"
+            )
 
-    try:
-        opts.set(*args.setoptions, defer=True)
-        optmanager.load_paths(
-            opts,
-            os.path.join(opts.confdir, "config-ruby.yaml"),
-            os.path.join(opts.confdir, "config.yml"),
-            os.path.join(opts.confdir, "config.yaml"),
-        )
-        process_options(parser, opts, args)
-
-        if args.options:
-            optmanager.dump_defaults(opts, sys.stdout)
-            sys.exit(0)
-        if args.commands:
-            master.commands.dump()
-            sys.exit(0)
-        if extra:
-            if args.filter_args:
-                master.log.info(f"Only processing flows that match \"{' & '.join(args.filter_args)}\"")
-            opts.update(**extra(args))
-
-        loop = asyncio.get_event_loop()
         try:
-            loop.add_signal_handler(signal.SIGINT, getattr(master, "prompt_for_exit", master.shutdown))
-            loop.add_signal_handler(signal.SIGTERM, master.shutdown)
+            args = parser.parse_args(arguments)
+        except SystemExit:
+            arg_check.check()
+            sys.exit(1)
+
+        try:
+            opts.set(*args.setoptions, defer=True)
+            optmanager.load_paths(
+                opts,
+                os.path.join(opts.confdir, "config.yaml"),
+                os.path.join(opts.confdir, "config.yml"),
+            )
+            process_options(parser, opts, args)
+
+            if args.options:
+                optmanager.dump_defaults(opts, sys.stdout)
+                sys.exit(0)
+            if args.commands:
+                master.commands.dump()
+                sys.exit(0)
+            if extra:
+                if args.filter_args:
+                    logging.info(
+                        f"Only processing flows that match \"{' & '.join(args.filter_args)}\""
+                    )
+                opts.update(**extra(args))
+
+        except exceptions.OptionsError as e:
+            print(f"{sys.argv[0]}: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        loop = asyncio.get_running_loop()
+
+        def _sigint(*_):
+            loop.call_soon_threadsafe(
+                getattr(master, "prompt_for_exit", master.shutdown)
+            )
+
+        def _sigterm(*_):
+            loop.call_soon_threadsafe(master.shutdown)
+
+        try:
+            # Prefer loop.add_signal_handler where it is available
+            # https://github.com/mitmproxy/mitmproxy/issues/7128
+            loop.add_signal_handler(signal.SIGINT, _sigint)
+            loop.add_signal_handler(signal.SIGTERM, _sigterm)
         except NotImplementedError:
-            # Not supported on Windows
-            pass
+            # Fall back to `signal.signal` for platforms where that is not available (Windows' Proactorloop)
+            signal.signal(signal.SIGINT, _sigint)
+            signal.signal(signal.SIGTERM, _sigterm)
 
-        # Make sure that we catch KeyboardInterrupts on Windows.
-        # https://stackoverflow.com/a/36925722/934719
-        if os.name == "nt":
-            async def wakeup():
-                while True:
-                    await asyncio.sleep(0.2)
-            asyncio.ensure_future(wakeup())
+        # to fix the issue mentioned https://github.com/mitmproxy/mitmproxy/issues/6744
+        # by setting SIGPIPE to SIG_IGN, the process will not terminate and continue to run
+        if hasattr(signal, "SIGPIPE"):
+            signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
-        master.run()
-    except exceptions.OptionsError as e:
-        print("{}: {}".format(sys.argv[0], e), file=sys.stderr)
-        sys.exit(1)
-    except (KeyboardInterrupt, RuntimeError):
-        pass
-    return master
+        await master.run()
+        return master
+
+    return asyncio.run(main())
 
 
-def mitmproxy(args=None) -> typing.Optional[int]:  # pragma: no cover
-    if os.name == "nt":
-        import urwid
-        urwid.set_encoding("utf8")
-    else:
-        assert_utf8_env()
+def mitmproxy(args=None) -> int | None:  # pragma: no cover
     from mitmproxy.tools import console
+
     run(console.master.ConsoleMaster, cmdline.mitmproxy, args)
     return None
 
 
-def mitmdump(args=None) -> typing.Optional[int]:  # pragma: no cover
+def mitmdump(args=None) -> int | None:  # pragma: no cover
     from mitmproxy.tools import dump
 
     def extra(args):
@@ -145,19 +157,18 @@ def mitmdump(args=None) -> typing.Optional[int]:  # pragma: no cover
             )
         return {}
 
-    m = run(dump.DumpMaster, cmdline.mitmdump, args, extra)
-    if m and m.errorcheck.has_errored:  # type: ignore
-        return 1
+    run(dump.DumpMaster, cmdline.mitmdump, args, extra)
     return None
 
 
-def mitmweb(args=None) -> typing.Optional[int]:  # pragma: no cover
+def mitmweb(args=None) -> int | None:  # pragma: no cover
     from mitmproxy.tools import web
+
     run(web.master.WebMaster, cmdline.mitmweb, args)
     return None
 
 
-def browserupproxy(args=None) -> typing.Optional[int]:  # pragma: no cover
+def browserupproxy(args=None) -> int | None:  # pragma: no cover
     from mitmproxy.tools import browserup_proxy
 
     def extra(args):
@@ -171,6 +182,6 @@ def browserupproxy(args=None) -> typing.Optional[int]:  # pragma: no cover
         return {}
 
     m = run(browserup_proxy.BrowserupProxyMaster, cmdline.mitmdump, args, extra)
-    if m and m.errorcheck.has_errored:  # type: ignore
+    if m and m.errorcheck.logger.has_errored:  # type: ignore
         return 1
     return None

@@ -1,8 +1,8 @@
-from mitmproxy import ctx
+import logging
 
 
-def running():
-    ctx.log.info("error running")
+def load(loader):
+    logging.info("error load")
 
 
 def request(flow):

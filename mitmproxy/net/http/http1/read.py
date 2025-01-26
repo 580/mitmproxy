@@ -1,16 +1,20 @@
 import re
 import time
-from typing import List, Tuple, Iterable, Optional
+import typing
+from collections.abc import Iterable
 
-from mitmproxy.http import Request, Headers, Response
+from mitmproxy.http import Headers
+from mitmproxy.http import Request
+from mitmproxy.http import Response
 from mitmproxy.net.http import url
+from mitmproxy.net.http import validate
 
 
 def get_header_tokens(headers, key):
     """
-        Retrieve all tokens for a header key. A number of different headers
-        follow a pattern where each header line can containe comma-separated
-        tokens, and headers can be set multiple times.
+    Retrieve all tokens for a header key. A number of different headers
+    follow a pattern where each header line can containe comma-separated
+    tokens, and headers can be set multiple times.
     """
     if key not in headers:
         return []
@@ -20,10 +24,10 @@ def get_header_tokens(headers, key):
 
 def connection_close(http_version, headers):
     """
-        Checks the message to see if the client connection should be closed
-        according to RFC 2616 Section 8.1.
-        If we don't have a Connection header, HTTP 1.1 connections are assumed
-        to be persistent.
+    Checks the message to see if the client connection should be closed
+    according to RFC 2616 Section 8.1.
+    If we don't have a Connection header, HTTP 1.1 connections are assumed
+    to be persistent.
     """
     if "connection" in headers:
         tokens = get_header_tokens(headers, "connection")
@@ -33,24 +37,25 @@ def connection_close(http_version, headers):
             return False
 
     return http_version not in (
-        "HTTP/1.1", b"HTTP/1.1",
-        "HTTP/2.0", b"HTTP/2.0",
+        "HTTP/1.1",
+        b"HTTP/1.1",
+        "HTTP/2.0",
+        b"HTTP/2.0",
     )
 
 
 def expected_http_body_size(
-        request: Request,
-        response: Optional[Response] = None
-) -> Optional[int]:
+    request: Request, response: Response | None = None
+) -> int | None:
     """
-        Returns:
-            The expected body length:
-            - a positive integer, if the size is known in advance
-            - None, if the size in unknown in advance (chunked encoding)
-            - -1, if all data should be read until end of stream.
+    Returns:
+        The expected body length:
+        - a positive integer, if the size is known in advance
+        - None, if the size in unknown in advance (chunked encoding)
+        - -1, if all data should be read until end of stream.
 
-        Raises:
-            ValueError, if the content length header is invalid
+    Raises:
+        ValueError, if the content-length or transfer-encoding header is invalid
     """
     # Determine response size according to http://tools.ietf.org/html/rfc7230#section-3.3, which is inlined below.
     if not response:
@@ -100,37 +105,20 @@ def expected_http_body_size(
     #        remove the received Content-Length field prior to forwarding such
     #        a message downstream.
     #
-    if "transfer-encoding" in headers:
-        if "content-length" in headers:
-            raise ValueError("Received both a Transfer-Encoding and a Content-Length header, "
-                             "refusing as recommended in RFC 7230 Section 3.3.3. "
-                             "See https://github.com/mitmproxy/mitmproxy/issues/4799 for details.")
-
-        te: str = headers["transfer-encoding"]
-        if not te.isascii():
-            # guard against .lower() transforming non-ascii to ascii
-            raise ValueError(f"Invalid transfer encoding: {te!r}")
-        te = te.lower().strip("\t ")
-        te = re.sub(r"[\t ]*,[\t ]*", ",", te)
-        if te in (
-            "chunked",
-            "compress,chunked",
-            "deflate,chunked",
-            "gzip,chunked",
-        ):
-            return None
-        elif te in (
-            "compress",
-            "deflate",
-            "gzip",
-            "identity",
-        ):
-            if response:
-                return -1
-            else:
-                raise ValueError(f"Invalid request transfer encoding, message body cannot be determined reliably.")
-        else:
-            raise ValueError(f"Unknown transfer encoding: {headers['transfer-encoding']!r}")
+    if te_str := headers.get("transfer-encoding"):
+        te = validate.parse_transfer_encoding(te_str)
+        match te:
+            case "chunked" | "compress,chunked" | "deflate,chunked" | "gzip,chunked":
+                return None
+            case "compress" | "deflate" | "gzip" | "identity":
+                if response:
+                    return -1
+                else:
+                    raise ValueError(
+                        "Invalid request transfer encoding, message body cannot be determined reliably."
+                    )
+            case other:  # pragma: no cover
+                typing.assert_never(other)
 
     #    4.  If a message is received without Transfer-Encoding and with
     #        either multiple Content-Length header fields having differing
@@ -151,19 +139,8 @@ def expected_http_body_size(
     #        the recipient times out before the indicated number of octets are
     #        received, the recipient MUST consider the message to be
     #        incomplete and close the connection.
-    if "content-length" in headers:
-        sizes = headers.get_all("content-length")
-        different_content_length_headers = any(x != sizes[0] for x in sizes)
-        if different_content_length_headers:
-            raise ValueError(f"Conflicting Content-Length headers: {sizes!r}")
-        try:
-            size = int(sizes[0])
-        except ValueError:
-            raise ValueError(f"Invalid Content-Length header: {sizes[0]!r}")
-        if size < 0:
-            raise ValueError(f"Negative Content-Length header: {sizes[0]!r}")
-        return size
-
+    if cl := headers.get("content-length"):
+        return validate.parse_content_length(cl)
     #    6.  If this is a request message and none of the above are true, then
     #        the message body length is zero (no message body is present).
     if not response:
@@ -177,14 +154,16 @@ def expected_http_body_size(
 
 
 def raise_if_http_version_unknown(http_version: bytes) -> None:
-    if not re.match(br"^HTTP/\d\.\d$", http_version):
+    if not re.match(rb"^HTTP/\d\.\d$", http_version):
         raise ValueError(f"Unknown HTTP version: {http_version!r}")
 
 
-def _read_request_line(line: bytes) -> Tuple[str, int, bytes, bytes, bytes, bytes, bytes]:
+def _read_request_line(
+    line: bytes,
+) -> tuple[str, int, bytes, bytes, bytes, bytes, bytes]:
     try:
         method, target, http_version = line.split()
-        port: Optional[int]
+        port: int | None
 
         if target == b"*" or target.startswith(b"/"):
             scheme, authority, path = b"", b"", target
@@ -212,7 +191,7 @@ def _read_request_line(line: bytes) -> Tuple[str, int, bytes, bytes, bytes, byte
     return host, port, method, scheme, authority, path, http_version
 
 
-def _read_response_line(line: bytes) -> Tuple[bytes, int, bytes]:
+def _read_response_line(line: bytes) -> tuple[bytes, int, bytes]:
     try:
         parts = line.split(None, 2)
         if len(parts) == 2:  # handle missing message gracefully
@@ -229,22 +208,22 @@ def _read_response_line(line: bytes) -> Tuple[bytes, int, bytes]:
 
 def _read_headers(lines: Iterable[bytes]) -> Headers:
     """
-        Read a set of headers.
-        Stop once a blank line is reached.
+    Read a set of headers.
+    Stop once a blank line is reached.
 
-        Returns:
-            A headers object
+    Returns:
+        A headers object
 
-        Raises:
-            exceptions.HttpSyntaxException
+    Raises:
+        exceptions.HttpSyntaxException
     """
-    ret: List[Tuple[bytes, bytes]] = []
+    ret: list[tuple[bytes, bytes]] = []
     for line in lines:
         if line[0] in b" \t":
             if not ret:
                 raise ValueError("Invalid headers")
             # continued header
-            ret[-1] = (ret[-1][0], ret[-1][1] + b'\r\n ' + line.strip())
+            ret[-1] = (ret[-1][0], ret[-1][1] + b"\r\n " + line.strip())
         else:
             try:
                 name, value = line.split(b":", 1)
@@ -257,7 +236,7 @@ def _read_headers(lines: Iterable[bytes]) -> Headers:
     return Headers(ret)
 
 
-def read_request_head(lines: List[bytes]) -> Request:
+def read_request_head(lines: list[bytes]) -> Request:
     """
     Parse an HTTP request head (request line + headers) from an iterable of lines
 
@@ -270,7 +249,9 @@ def read_request_head(lines: List[bytes]) -> Request:
     Raises:
         ValueError: The input is malformed.
     """
-    host, port, method, scheme, authority, path, http_version = _read_request_line(lines[0])
+    host, port, method, scheme, authority, path, http_version = _read_request_line(
+        lines[0]
+    )
     headers = _read_headers(lines[1:])
 
     return Request(
@@ -285,11 +266,11 @@ def read_request_head(lines: List[bytes]) -> Request:
         content=None,
         trailers=None,
         timestamp_start=time.time(),
-        timestamp_end=None
+        timestamp_end=None,
     )
 
 
-def read_response_head(lines: List[bytes]) -> Response:
+def read_response_head(lines: list[bytes]) -> Response:
     """
     Parse an HTTP response head (response line + headers) from an iterable of lines
 

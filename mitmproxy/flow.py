@@ -1,14 +1,22 @@
+from __future__ import annotations
+
+import asyncio
+import copy
 import time
-import typing  # noqa
 import uuid
+from dataclasses import dataclass
+from dataclasses import field
+from typing import Any
+from typing import ClassVar
 
-from mitmproxy import controller, connection
+from mitmproxy import connection
 from mitmproxy import exceptions
-from mitmproxy import stateobject
 from mitmproxy import version
+from mitmproxy.coretypes import serializable
 
 
-class Error(stateobject.StateObject):
+@dataclass
+class Error(serializable.SerializableDataclass):
     """
     An Error.
 
@@ -21,20 +29,10 @@ class Error(stateobject.StateObject):
     msg: str
     """Message describing the error."""
 
-    timestamp: float
+    timestamp: float = field(default_factory=time.time)
     """Unix timestamp of when this error happened."""
 
-    KILLED_MESSAGE: typing.ClassVar[str] = "Connection killed."
-
-    def __init__(self, msg: str, timestamp: typing.Optional[float] = None) -> None:
-        """Create an error. If no timestamp is passed, the current time is used."""
-        self.msg = msg
-        self.timestamp = timestamp or time.time()
-
-    _stateobject_attributes = dict(
-        msg=str,
-        timestamp=float
-    )
+    KILLED_MESSAGE: ClassVar[str] = "Connection killed."
 
     def __str__(self):
         return self.msg
@@ -42,16 +40,8 @@ class Error(stateobject.StateObject):
     def __repr__(self):
         return self.msg
 
-    @classmethod
-    def from_state(cls, state):
-        # the default implementation assumes an empty constructor. Override
-        # accordingly.
-        f = cls(None)
-        f.set_state(state)
-        return f
 
-
-class Flow(stateobject.StateObject):
+class Flow(serializable.Serializable):
     """
     Base class for network flows. A flow is a collection of objects,
     for example HTTP request/response pairs or a list of TCP messages.
@@ -59,7 +49,9 @@ class Flow(stateobject.StateObject):
     See also:
      - mitmproxy.http.HTTPFlow
      - mitmproxy.tcp.TCPFlow
+     - mitmproxy.udp.UDPFlow
     """
+
     client_conn: connection.Client
     """The client that connected to mitmproxy."""
 
@@ -73,7 +65,7 @@ class Flow(stateobject.StateObject):
     with a `timestamp_start` set to `None`.
     """
 
-    error: typing.Optional[Error] = None
+    error: Error | None = None
     """A connection or protocol error affecting this flow."""
 
     intercepted: bool
@@ -96,7 +88,7 @@ class Flow(stateobject.StateObject):
     The default marker for the view will be used if the Unicode emoji name can not be interpreted.
     """
 
-    is_replay: typing.Optional[str]
+    is_replay: str | None
     """
     This attribute indicates if this flow has been replayed in either direction.
 
@@ -104,57 +96,99 @@ class Flow(stateobject.StateObject):
      - a value of `response` indicates that the response to the client's request has been set by server replay.
     """
 
+    live: bool
+    """
+    If `True`, the flow belongs to a currently active connection.
+    If `False`, the flow may have been already completed or loaded from disk.
+    """
+
+    timestamp_created: float
+    """
+    The Unix timestamp of when this flow was created.
+
+    In contrast to `timestamp_start`, this value will not change when a flow is replayed.
+    """
+
     def __init__(
         self,
-        type: str,
         client_conn: connection.Client,
         server_conn: connection.Server,
-        live: bool = None
+        live: bool = False,
     ) -> None:
-        self.type = type
         self.id = str(uuid.uuid4())
         self.client_conn = client_conn
         self.server_conn = server_conn
         self.live = live
+        self.timestamp_created = time.time()
 
         self.intercepted: bool = False
-        self._backup: typing.Optional[Flow] = None
-        self.reply: typing.Optional[controller.Reply] = None
+        self._resume_event: asyncio.Event | None = None
+        self._backup: Flow | None = None
         self.marked: str = ""
-        self.is_replay: typing.Optional[str] = None
-        self.metadata: typing.Dict[str, typing.Any] = dict()
+        self.is_replay: str | None = None
+        self.metadata: dict[str, Any] = dict()
         self.comment: str = ""
 
-    _stateobject_attributes = dict(
-        id=str,
-        error=Error,
-        client_conn=connection.Client,
-        server_conn=connection.Server,
-        type=str,
-        intercepted=bool,
-        is_replay=str,
-        marked=str,
-        metadata=typing.Dict[str, typing.Any],
-        comment=str,
-    )
+    __types: dict[str, type[Flow]] = {}
 
-    def get_state(self):
-        d = super().get_state()
-        d.update(version=version.FLOW_FORMAT_VERSION)
-        if self._backup and self._backup != d:
-            d.update(backup=self._backup)
-        return d
+    type: ClassVar[
+        str
+    ]  # automatically derived from the class name in __init_subclass__
+    """The flow type, for example `http`, `tcp`, or `dns`."""
 
-    def set_state(self, state):
-        state = state.copy()
-        state.pop("version")
-        if "backup" in state:
-            self._backup = state.pop("backup")
-        super().set_state(state)
+    def __init_subclass__(cls, **kwargs):
+        cls.type = cls.__name__.removesuffix("Flow").lower()
+        Flow.__types[cls.type] = cls
+
+    def get_state(self) -> serializable.State:
+        state = {
+            "version": version.FLOW_FORMAT_VERSION,
+            "type": self.type,
+            "id": self.id,
+            "error": self.error.get_state() if self.error else None,
+            "client_conn": self.client_conn.get_state(),
+            "server_conn": self.server_conn.get_state(),
+            "intercepted": self.intercepted,
+            "is_replay": self.is_replay,
+            "marked": self.marked,
+            "metadata": copy.deepcopy(self.metadata),
+            "comment": self.comment,
+            "timestamp_created": self.timestamp_created,
+        }
+        state["backup"] = copy.deepcopy(self._backup) if self._backup != state else None
+        return state
+
+    def set_state(self, state: serializable.State) -> None:
+        assert state.pop("version") == version.FLOW_FORMAT_VERSION
+        assert state.pop("type") == self.type
+        self.id = state.pop("id")
+        if state["error"]:
+            if self.error:
+                self.error.set_state(state.pop("error"))
+            else:
+                self.error = Error.from_state(state.pop("error"))
+        else:
+            self.error = state.pop("error")
+        self.client_conn.set_state(state.pop("client_conn"))
+        self.server_conn.set_state(state.pop("server_conn"))
+        self.intercepted = state.pop("intercepted")
+        self.is_replay = state.pop("is_replay")
+        self.marked = state.pop("marked")
+        self.metadata = state.pop("metadata")
+        self.comment = state.pop("comment")
+        self.timestamp_created = state.pop("timestamp_created")
+        self._backup = state.pop("backup", None)
+        assert state == {}
 
     @classmethod
-    def from_state(cls, state):
-        f = cls(None, None)
+    def from_state(cls, state: serializable.State) -> Flow:
+        try:
+            flow_cls = Flow.__types[state["type"]]
+        except KeyError:
+            raise ValueError(f"Unknown flow type: {state['type']}")
+        client = connection.Client(peername=("", 0), sockname=("", 0))
+        server = connection.Server(address=None)
+        f = flow_cls(client, server)
         f.set_state(state)
         return f
 
@@ -162,8 +196,6 @@ class Flow(stateobject.StateObject):
         """Make a copy of this flow."""
         f = super().copy()
         f.live = False
-        if self.reply is not None:
-            f.reply = controller.DummyReply()
         return f
 
     def modified(self):
@@ -184,7 +216,7 @@ class Flow(stateobject.StateObject):
 
     def revert(self):
         """
-            Revert to the last backed up state.
+        Revert to the last backed up state.
         """
         if self._backup:
             self.set_state(self._backup)
@@ -193,11 +225,7 @@ class Flow(stateobject.StateObject):
     @property
     def killable(self):
         """*Read-only:* `True` if this flow can be killed, `False` otherwise."""
-        return (
-            self.reply and
-            self.reply.state in {"start", "taken"} and
-            not (self.error and self.error.msg == Error.KILLED_MESSAGE)
-        )
+        return self.live and not (self.error and self.error.msg == Error.KILLED_MESSAGE)
 
     def kill(self):
         """
@@ -205,6 +233,10 @@ class Flow(stateobject.StateObject):
         """
         if not self.killable:
             raise exceptions.ControlException("Flow is not killable.")
+        # TODO: The way we currently signal killing is not ideal. One major problem is that we cannot kill
+        #  flows in transit (https://github.com/mitmproxy/mitmproxy/issues/4711), even though they are advertised
+        #  as killable. An alternative approach would be to introduce a `KillInjected` event similar to
+        #  `MessageInjected`, which should fix this issue.
         self.error = Error(Error.KILLED_MESSAGE)
         self.intercepted = False
         self.live = False
@@ -217,7 +249,18 @@ class Flow(stateobject.StateObject):
         if self.intercepted:
             return
         self.intercepted = True
-        self.reply.take()
+        if self._resume_event is not None:
+            self._resume_event.clear()
+
+    async def wait_for_resume(self):
+        """
+        Wait until this Flow is resumed.
+        """
+        if not self.intercepted:
+            return
+        if self._resume_event is None:
+            self._resume_event = asyncio.Event()
+        await self._resume_event.wait()
 
     def resume(self):
         """
@@ -226,9 +269,8 @@ class Flow(stateobject.StateObject):
         if not self.intercepted:
             return
         self.intercepted = False
-        # If a flow is intercepted and then duplicated, the duplicated one is not taken.
-        if self.reply.state == "taken":
-            self.reply.commit()
+        if self._resume_event is not None:
+            self._resume_event.set()
 
     @property
     def timestamp_start(self) -> float:

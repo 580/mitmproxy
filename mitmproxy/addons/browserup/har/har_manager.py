@@ -1,26 +1,27 @@
-from mitmproxy import ctx
+import copy
+import json
+import logging
+import tempfile
 from datetime import datetime
 from datetime import timezone
-from mitmproxy.net.http import cookies
+from threading import Lock
+
 from mitmproxy.addons.browserup.har.har_builder import HarBuilder
 from mitmproxy.addons.browserup.har.har_capture_types import HarCaptureTypes
-import json
-import copy
-import tempfile
+from mitmproxy.net.http import cookies
+
+mutex = Lock()
+
+SUBMITTED_FLAG = "_submitted"
 
 
-DEFAULT_PAGE_REF = "Default"
-DEFAULT_PAGE_TITLE = "Default"
-REQUEST_SUBMITTED_FLAG = "_request_submitted"
-
-
-class HarManagerMixin():
+class HarManagerMixin:
     # Used to manage a single active har, gets mixed into har_capture_addon
 
     def __init__(self):
-        self.num = 0
+        self.page_number = 0
         self.har = HarBuilder.har()
-        self.har_page_count = 0
+
         self.har_capture_types = [
             HarCaptureTypes.REQUEST_HEADERS,
             HarCaptureTypes.REQUEST_COOKIES,
@@ -28,124 +29,167 @@ class HarManagerMixin():
             HarCaptureTypes.REQUEST_BINARY_CONTENT,
             HarCaptureTypes.RESPONSE_HEADERS,
             HarCaptureTypes.RESPONSE_COOKIES,
-            HarCaptureTypes.RESPONSE_CONTENT,
-            HarCaptureTypes.RESPONSE_BINARY_CONTENT,
+            HarCaptureTypes.RESPONSE_DYNAMIC_CONTENT,
             HarCaptureTypes.WEBSOCKET_MESSAGES,
         ]
-        self.current_har_page = None
+        #  omitting HarCaptureTypes.RESPONSE_BINARY_CONTENT,
         self.http_connect_timings = {}
 
+    def get_or_create_har(self, page_ref=None, page_title=None):
+        if self.har is None:
+            self.reset_har_and_return_old_har()
+        return self.har
+
+    def new_har(self):
+        self.har = HarBuilder.har()
+
     def create_har_entry(self, flow):
-        har = self.get_or_create_har(DEFAULT_PAGE_REF, DEFAULT_PAGE_TITLE, True)
-        entry = HarBuilder.entry()
-        har['log']['entries'].append(entry)
+        har = self.get_or_create_har()
+        page = self.get_or_create_current_page()
+        pageref = page["id"]
+        entry = HarBuilder.entry(pageref)
+        har["log"]["entries"].append(entry)
+        self.print_har_summary()
         return entry
 
     def get_har(self, clean_har):
         if clean_har:
-            return self.new_har(DEFAULT_PAGE_REF, DEFAULT_PAGE_TITLE)
+            self.new_har()
         return self.har
 
-    def get_default_har_page(self):
-        for hp in self.har['log']['pages']:
-            if hp['title'] == DEFAULT_PAGE_TITLE:
-                return hp
-        return None
+    def new_page(self, page_title=None, page_ref=None):
+        logging.info("-->Creating new page")
 
-    def get_or_create_har(self, page_ref, page_title, create_page=False):
-        if self.har is None:
-            self.new_har(page_ref, page_title, create_page)
-            if create_page:
-                self.get_or_create_default_page()
-        return self.har
-
-    def new_page(self, page_title, page_ref=None):
-        ctx.log.info(
-            'Creating new page with initial page ref: {}, title: {}'.
-            format(page_ref, page_title))
-
-        har = self.get_or_create_har(page_ref, page_title, False)
-
-        end_of_page_har = None
-
-        if self.current_har_page is not None:
-            current_page_ref = self.current_har_page['id']
+        # only create a new page if there are entries in the current page
+        if len(self.har["log"]["pages"]) > 0:
             self.end_page()
 
-            end_of_page_har = self.copy_har_through_page_ref(har, current_page_ref)
+        har = self.get_or_create_har()
 
-        if page_ref is None:
-            self.har_page_count += 1
-            page_ref = "Page " + str(self.har_page_count)
+        next_page_number = len(har["log"]["pages"]) + 1
+        next_id = "page_{}".format(next_page_number)
+        new_page = HarBuilder.page(id=next_id)
+        har["log"]["pages"].append(new_page)
 
-        if page_title is None:
-            page_title = page_ref
-
-        new_page = HarBuilder.page(title=page_title, id=page_ref)
-        har['log']['pages'].append(new_page)
-
-        self.current_har_page = new_page
-        return end_of_page_har
+    # print a list of the pages with their title and a list of the entries, and their page ref
+    def print_har_summary(self):
+        return
+        logging.debug("-->Printing har summary")
+        h = self.get_or_create_har()
+        for page in h["log"]["pages"]:
+            logging.debug(page["title"] + " " + page["id"])
+            for entry in h["log"]["entries"]:
+                logging.info("===>entry: {}".format(entry))
 
     def get_current_page_ref(self):
-        har_page = self.current_har_page
-        if har_page is None:
-            har_page = self.get_or_create_default_page()
-        return har_page['id']
+        har_page = self.get_or_create_current_page()
+        return har_page["id"]
 
     def get_or_create_current_page(self):
-        har_page = self.current_har_page
-        if har_page is None:
-            har_page = self.get_or_create_default_page()
-        return har_page
-
-    def get_or_create_default_page(self):
-        default_page = self.get_default_page()
-        if default_page is None:
-            default_page = self.add_default_page()
-        return default_page
-
-    def add_default_page(self):
-        self.get_or_create_har(DEFAULT_PAGE_REF, DEFAULT_PAGE_TITLE, False)
-        new_page = HarBuilder.page(title=DEFAULT_PAGE_REF, id=DEFAULT_PAGE_REF)
-        self.har['log']['pages'].append(new_page)
-        return new_page
-
-    def get_default_page(self):
-        for p in self.har['log']['pages']:
-            if p['id'] == DEFAULT_PAGE_REF:
-                return p
-        return None
-
-    def new_har(self, initial_page_ref=DEFAULT_PAGE_REF, initial_page_title=DEFAULT_PAGE_TITLE, create_page=False):
-
-        if create_page:
-            ctx.log.info(
-                'Creating new har with initial page ref: {}, title: {}'.
-                format(initial_page_ref, initial_page_title))
+        self.get_or_create_har()
+        if len(self.har["log"]["pages"]) > 0:
+            return self.har["log"]["pages"][-1]
         else:
-            ctx.log.info('Creating new har without initial page')
+            har_page = HarBuilder.page
+            self.har["log"]["pages"].append(har_page)
+            return har_page
 
-        old_har = self.end_har()
+    def reset_har_and_return_old_har(self):
+        logging.info("Creating new har")
 
-        self.har_page_count = 0
-        self.har = HarBuilder.har()
-
-        if create_page:
-            self.new_page(initial_page_ref, initial_page_title)
-
-        self.copy_entries_without_response(old_har)
+        with mutex:
+            old_har = self.end_har()
+            self.har = HarBuilder.har()
 
         return old_har
 
     def add_verification_to_har(self, verification_type, verification_name, result):
-        self.add_custom_value_to_har('_verifications', {'name': verification_name, 'type': verification_type, 'result': result})
+        self.add_custom_value_to_har(
+            "_verifications",
+            {"name": verification_name, "type": verification_type, "result": result},
+        )
 
     def add_counter_to_har(self, counter_dict):
-        self.add_custom_value_to_har('_counters', counter_dict)
+        self.add_custom_value_to_har("_counters", counter_dict)
 
     def add_error_to_har(self, error_dict):
-        self.add_custom_value_to_har('_errors', error_dict)
+        self.add_custom_value_to_har("_errors", error_dict)
+
+    def add_page_timings_to_har(self, page_info):
+        page = self.get_or_create_current_page()
+        timings = page["pageTimings"]
+        timings.update(page_info)
+        page["pageTimings"] = timings
+        logging.info(self.get_or_create_current_page())
+
+    def add_page_data_to_har(self, page_data):
+        page = self.get_or_create_current_page()
+        # one-liner to merge page data into page giving precedence to page data
+        page.update(page_data)
+
+    def entries_for_page(self, page_ref):
+        har = self.get_or_create_har()
+        return [
+            entry for entry in har["log"]["entries"] if entry["pageref"] == page_ref
+        ]
+
+    def page_from_page_ref(self, page_ref):
+        har = self.get_or_create_har()
+        for page in har["log"]["pages"]:
+            if page["id"] == page_ref:
+                return page
+
+    def is_a_websocket(self, entry):
+        # check if the request is a websocket by checking headers for upgrade: websocket
+        for header in entry["response"]["headers"]:
+            if (
+                header["name"].lower() == "upgrade"
+                and header["value"].lower() == "websocket"
+            ):
+                return True
+
+    # not guaranteed
+    def is_a_video(self, entry):
+        url = entry["request"]["url"]
+
+        video_extensions = [".mp4", ".webm", ".ogg", ".flv", ".avi"]
+        if any(url.lower().endswith(ext) for ext in video_extensions):
+            return True
+
+        mime_type = ""
+        for header in entry["response"]["headers"]:
+            if header["name"].lower() == "content-type":
+                mime_type = header["value"]
+                break
+
+        if "video" in mime_type:
+            return True
+
+        return False
+
+    def submit_har(self):
+        page = self.get_or_create_current_page()
+        self.submit_entries(page["id"], True, True)
+        self.submit_page(page)
+
+    def decorate_video_data_on_entries(self, video_data):
+        page = self.get_or_create_current_page()
+        latest_page_entries = self.entries_for_page(page["id"])
+        if len(latest_page_entries) == 0 or len(video_data) == 0:
+            return
+
+        for entry in latest_page_entries:
+            for video in video_data:
+                videosrc = video["_videoSRC"]
+                if not videosrc or videosrc == "":
+                    continue
+
+                if videosrc in entry["request"]["url"]:
+                    print("found video entry! {}".format(entry))
+                    del video["_videoSRC"]
+                    entry["response"]["content"].update(video)
+                    video_data.remove(video)  # remove the video from the video_data
+                    break
 
     def add_custom_value_to_har(self, item_type, item):
         page = self.get_or_create_current_page()
@@ -153,98 +197,104 @@ class HarManagerMixin():
         items = page.get(item_type)
         items.append(item)
 
+    def set_page_title(self, title):
+        logging.debug("Setting page title to: {}".format(title))
+        page = self.get_or_create_current_page()
+        page["title"] = title
+
     def end_har(self):
-        ctx.log.info('Ending current har...')
-        old_har = self.har
-        if old_har is None:
-            return
-
+        logging.info("Ending current har...")
         self.end_page()
-        self.har = None
-
+        old_har = self.har
+        self.har = HarBuilder.har()
         return old_har
 
     def copy_entries_without_response(self, old_har):
         if old_har is not None:
-            for entry in old_har['log']['entries']:
+            for entry in old_har["log"]["entries"]:
                 if not self.har_entry_has_response(entry):
-                    self.har['log']['entries'].append(entry)
-
-    def add_har_page(self, pageRef, pageTitle):
-        ctx.log.debug('Adding har page with ref: {} and title: {}'.format(pageRef, pageTitle))
-        har_page = HarBuilder.page(id=pageRef, title=pageTitle)
-        self.har['log']['pages'].append(har_page)
-        return har_page
+                    self.har["log"]["entries"].append(entry)
 
     def end_page(self):
-        ctx.log.info('Ending current page...')
-
-        previous_har_page = self.current_har_page
-        self.current_har_page = None
-
-        if previous_har_page is None:
-            return
+        logging.info("Ending current page...")
 
     def is_har_entry_submitted(self, har_entry):
-        return REQUEST_SUBMITTED_FLAG in har_entry
+        return har_entry.get(SUBMITTED_FLAG)
 
     def har_entry_has_response(self, har_entry):
-        return bool(har_entry['response'])
+        return bool(har_entry["response"])
 
-    def har_entry_clear_request(self, har_entry):
-        har_entry['request'] = {}
+    # normally, for responses, we only submit when 'done' (have a response) and they are not websockets or videos
+    # because websocket and video responses may be ongoing until the page is exited (next page started)
+    # however, we do want to submit websocket messages and video data, so we pass the flags to include them
+    # when we are done with the page (a final submit).
 
-    def filter_har_for_report(self, har):
-        if har is None:
-            return har
-
-        har_copy = copy.deepcopy(har)
-        entries_to_report = []
-        for entry in har_copy['log']['entries']:
-            if self.is_har_entry_submitted(entry):
-                if self.har_entry_has_response(entry):
-                    del entry[REQUEST_SUBMITTED_FLAG]
-                    self.har_entry_clear_request(entry)
-                    entries_to_report.append(entry)
-            else:
-                entries_to_report.append(entry)
-        har_copy['log']['entries'] = entries_to_report
-
-        return har_copy
-
-    def mark_har_entries_submitted(self, har):
-        if har is not None:
-            for entry in har['log']['entries']:
-                entry[REQUEST_SUBMITTED_FLAG] = True
-
-    def copy_har_through_page_ref(self, har, page_ref):
-        if har is None:
+    def create_filtered_har_and_track_submitted(
+        self, report_last_page=False, include_websockets=False, include_videos=False
+    ):
+        if self.har is None:
             return None
 
-        if har['log'] is None:
-            return HarBuilder.har()
+        entries_to_report = []
 
-        page_refs_to_copy = []
+        for entry in self.har["log"]["entries"]:
+            request_copy = {}
+            response_copy = {}
 
-        for page in har['log']['pages']:
-            page_refs_to_copy.append(page['id'])
-            if page_ref == page['id']:
+            # always submit request unless already submitted
+            if not entry["request"].get(SUBMITTED_FLAG):
+                request_copy = copy.deepcopy(entry["request"])
+                entry["request"][SUBMITTED_FLAG] = True
+
+            if entry["response"]:
+                # delay websocket harvesting until we have all messages
+                if not entry["response"].get(SUBMITTED_FLAG):
+                    if (include_websockets or not self.is_a_websocket(entry)) and (
+                        include_videos or not self.is_a_video(entry)
+                    ):
+                        response_copy = copy.deepcopy(entry["response"])
+                        entry["response"][SUBMITTED_FLAG] = True
+
+                if request_copy or response_copy:
+                    entry_copy = copy.deepcopy(entry)
+                    entry_copy["request"] = request_copy
+                    entry_copy["response"] = response_copy
+                    entries_to_report.append(entry_copy)
+
+        pages_to_report = []
+
+        pages = (
+            self.har["log"]["pages"]
+            if report_last_page
+            else self.har["log"]["pages"][:-1]
+        )
+        for page in pages:
+            if not page.get(SUBMITTED_FLAG):
+                page_copy = copy.deepcopy(page)
+                pages_to_report.append(page_copy)
+                page[SUBMITTED_FLAG] = True
+
+        har_copy = copy.deepcopy(self.har)
+        har_copy["log"]["entries"] = entries_to_report
+        har_copy["log"]["pages"] = pages_to_report
+        return har_copy
+
+    def _likely_a_video(entry):
+        url = entry["request"]["url"]
+        mime_type = ""
+        for header in entry["response"]["headers"]:
+            if header["name"].lower() == "content-type":
+                mime_type = header["value"]
                 break
 
-        log_copy = HarBuilder.log()
+        if "video" in mime_type:
+            return True
 
-        for entry in har['log']['entries']:
-            if entry['pageref'] in page_refs_to_copy:
-                log_copy['entries'].append(entry)
+        video_extensions = [".mp4", ".webm", ".ogg", ".flv", ".avi"]
+        if any(url.lower().endswith(ext) for ext in video_extensions):
+            return True
 
-        for page in har['log']['pages']:
-            if page['id'] in page_refs_to_copy:
-                log_copy['pages'].append(page)
-
-        har_copy = HarBuilder.har()
-        har_copy['log'] = log_copy
-
-        return har_copy
+        return False
 
     def format_cookies(self, cookie_list):
         rv = []
@@ -267,7 +317,9 @@ class HarManagerMixin():
             # Expiration time needs to be formatted
             expire_ts = cookies.get_expiration_ts(attrs)
             if expire_ts is not None:
-                cookie_har["expires"] = datetime.fromtimestamp(expire_ts, timezone.utc).isoformat()
+                cookie_har["expires"] = datetime.fromtimestamp(
+                    expire_ts, timezone.utc
+                ).isoformat()
 
             rv.append(cookie_har)
 
@@ -276,7 +328,9 @@ class HarManagerMixin():
     def save_har(self, har):
         json_dump: str = json.dumps(har, ensure_ascii=True, indent=2)
 
-        tmp_file = tempfile.NamedTemporaryFile(mode="wb", prefix="har_dump_", delete=False)
+        tmp_file = tempfile.NamedTemporaryFile(
+            mode="wb", prefix="har_dump_", delete=False
+        )
         raw: bytes = json_dump.encode()
         tmp_file.write(raw)
         tmp_file.flush()
@@ -301,6 +355,6 @@ class HarManagerMixin():
 
     def name_value(self, obj):
         """
-            Convert (key, value) pairs to HAR format.
+        Convert (key, value) pairs to HAR format.
         """
         return [{"name": k, "value": v} for k, v in obj.items()]
